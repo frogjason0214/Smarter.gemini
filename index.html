@@ -642,15 +642,15 @@ function normalize(raw, extra){
     body, terms,
     consensus: String(raw.consensus || '').trim(),
     sources: Array.isArray(raw.sources) ? raw.sources.filter(s => s && s.title).slice(0, 4) : [],
-    createdAt: Date.now(), doubt: false
+    createdAt: Date.now(), doubt: false,
+    model: state.lastModel || modelName(), fallback: !!state.lastFallback
   }, extra);
 }
 
 // ---------- Gemini ----------
 function modelName(){ return (state.settings.model || DEFAULT_MODEL).trim().replace(/^models\//, ''); }
 
-async function geminiRequest(payload, signal){
-  const model = modelName();
+async function geminiRequest(payload, signal, model = modelName()){
   let res;
   try{
     res = await fetch(`${API}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(state.settings.key.trim())}`, {
@@ -665,10 +665,11 @@ async function geminiRequest(payload, signal){
   try{ data = await res.json(); }catch{}
   if (!res.ok){
     const msg = data?.error?.message || res.statusText;
-    if (res.status === 429) throw new Error('已達這個模型的免費額度上限（每分鐘或每日請求數）。Flash 系列的每日額度較少，可以到設定改用 3.5 Flash-Lite，或稍後再試。');
-    if (res.status === 404) throw new Error(`這組金鑰無法使用模型「${model}」，請到設定改選其他模型。`);
-    if (/API key/i.test(msg) || res.status === 401 || res.status === 403) throw new Error('API 金鑰無效或沒有權限，請到設定確認金鑰。');
-    throw new Error(`Gemini 回傳錯誤（${res.status}）：${msg}`);
+    const fail = text => { const err = new Error(text); err.status = res.status; return err; };
+    if (res.status === 429) throw fail(`已達 ${modelLabel(model)} 的免費額度上限（每分鐘或每日請求數），請稍後再試。`);
+    if (res.status === 404) throw fail(`這組金鑰無法使用模型「${model}」，請到設定改選其他模型。`);
+    if (/API key/i.test(msg) || res.status === 401 || res.status === 403) throw fail('API 金鑰無效或沒有權限，請到設定確認金鑰。');
+    throw fail(`Gemini 回傳錯誤（${res.status}）：${msg}`);
   }
   const cand = data.candidates?.[0];
   const text = (cand?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join('');
@@ -679,12 +680,60 @@ async function geminiRequest(payload, signal){
   return text;
 }
 
+// 伺服器忙碌（5xx）時先重試，仍失敗或額度用完（429）就依序改用其他模型
+const RETRYABLE = new Set([500, 502, 503, 504]);
+const modelLabel = id => (MODELS.find(m => m.id === id)?.name || id).replace('Gemini ', '');
+function fallbackChain(){
+  const first = modelName();
+  if (state.settings.autoFallback === false) return [first];
+  const rest = first === 'gemini-3.5-flash-lite' ? ['gemini-3.5-flash'] : ['gemini-3.7-flash', 'gemini-3.5-flash-lite'];
+  return [first, ...rest.filter(m => m !== first)];
+}
+const sleep = (ms, signal) => new Promise((resolve, reject) => {
+  const t = setTimeout(resolve, ms);
+  if (signal) signal.addEventListener('abort', () => { clearTimeout(t); reject(new DOMException('aborted', 'AbortError')); }, { once:true });
+});
+
+async function geminiSmart(payload, signal, onStatus){
+  const chain = fallbackChain();
+  let lastErr;
+  for (let i = 0; i < chain.length; i++){
+    const model = chain[i];
+    for (let attempt = 0; attempt < 3; attempt++){
+      try{
+        const text = await geminiRequest(payload, signal, model);
+        state.lastModel = model; state.lastFallback = i > 0;
+        if (i > 0) toast(`${modelLabel(chain[0])} 目前無法使用，這次改由 ${modelLabel(model)} 回答`);
+        return text;
+      }catch(e){
+        if (e.name === 'AbortError') throw e;
+        lastErr = e;
+        if (RETRYABLE.has(e.status) && attempt < 2){
+          if (onStatus) onStatus(`${modelLabel(model)} 目前忙碌，${attempt === 0 ? '稍後自動重試' : '再試一次'}…`);
+          await sleep(attempt === 0 ? 2000 : 5000, signal);
+          continue;
+        }
+        break;
+      }
+    }
+    const canFallback = lastErr && (RETRYABLE.has(lastErr.status) || lastErr.status === 429);
+    if (!canFallback || i === chain.length - 1) break;
+    if (onStatus) onStatus(`改用 ${modelLabel(chain[i + 1])}…`);
+  }
+  if (lastErr && RETRYABLE.has(lastErr.status)){
+    throw new Error(chain.length > 1
+      ? 'Gemini 伺服器目前忙碌，已自動重試並改用其他模型，仍然無法完成，請稍後再試。'
+      : `${modelLabel(chain[0])} 目前忙碌，重試後仍無法完成。可以稍後再試，或到設定開啟「忙碌時自動改用其他模型」。`);
+  }
+  throw lastErr;
+}
+
 async function callGemini(userText, signal){
-  const text = await geminiRequest({
+  const text = await geminiSmart({
     systemInstruction:{ parts:[{ text:SYSTEM }] },
     contents:[{ role:'user', parts:[{ text:userText }] }],
     generationConfig:{ responseMimeType:'application/json', temperature:1 }
-  }, signal);
+  }, signal, msg => { state.loadingText = msg; render(); });
   const clean = text.replace(/```json|```/g, '').trim();
   const a = clean.indexOf('{'), b = clean.lastIndexOf('}');
   let obj;
@@ -767,7 +816,8 @@ async function regen(c){
   const fresh = normalize(raw, {});
   const target = state.cards[c.id] || c;
   Object.assign(target, { english: target.english || fresh.english, field: fresh.field || target.field,
-    body: fresh.body, terms: fresh.terms, consensus: fresh.consensus, sources: fresh.sources });
+    body: fresh.body, terms: fresh.terms, consensus: fresh.consensus, sources: fresh.sources,
+    model: fresh.model, fallback: fresh.fallback });
   delete target.stub;
   target.updatedAt = Date.now();
   state.cards[target.id] = target;
@@ -865,7 +915,7 @@ function updateAsk(){
   html += a.msgs.map(m => m.role === 'user'
     ? `<div class="msg user">${esc(m.text)}</div>`
     : `<div class="msg model">${mdLite(m.text)}</div>`).join('');
-  if (a.loading) html += '<div class="typing"><span>正在思考</span><button class="btn sm sec" data-act="askcancel">取消</button></div>';
+  if (a.loading) html += `<div class="typing"><span>${esc(a.status || '正在思考')}</span><button class="btn sm sec" data-act="askcancel">取消</button></div>`;
   if (a.error) html += `<div class="notice" role="alert">${esc(a.error)}<div class="btns"><button class="btn sm" data-act="askretry">再試一次</button></div></div>`;
   log.innerHTML = html;
 
@@ -896,7 +946,7 @@ function askSend(){
 async function askCall(){
   const a = state.ask;
   if (a.loading || !a.msgs.length) return;
-  a.loading = true; a.error = ''; a.controller = new AbortController();
+  a.loading = true; a.error = ''; a.status = ''; a.controller = new AbortController();
   updateAsk();
   const card = current();
   let sys = ASK_SYSTEM;
@@ -906,11 +956,11 @@ async function askCall(){
   let hist = a.msgs.slice(-12);
   while (hist.length && hist[0].role !== 'user') hist = hist.slice(1);
   try{
-    const text = await geminiRequest({
+    const text = await geminiSmart({
       systemInstruction:{ parts:[{ text:sys }] },
       contents: hist.map(m => ({ role:m.role, parts:[{ text:m.text }] })),
       generationConfig:{ temperature:0.7 }
-    }, a.controller.signal);
+    }, a.controller.signal, msg => { a.status = msg; updateAsk(); });
     a.msgs.push({ role:'model', text:text.trim() });
   }catch(e){
     if (e.name === 'AbortError'){
@@ -976,6 +1026,7 @@ function renderCard(c){
       ${c.field ? `<span class="field">${esc(c.field)}</span>` : ''}
       ${c.english ? `<span class="en">${esc(c.english)}</span>` : ''}
       ${c.level ? `<span class="lv">${esc(c.level)}程度</span>` : ''}
+      ${c.fallback && c.model ? `<span class="lv">由 ${esc(modelLabel(c.model))} 產生</span>` : ''}
       ${c.doubt ? '<span class="flag">已標記存疑</span>' : ''}
     </div>
     <h1 class="title">${esc(c.title)}</h1>
@@ -1052,6 +1103,7 @@ function renderSettings(){
     <h2>模型</h2>
     <p class="hint">知識卡片和提問都會使用這個模型。</p>
     <div class="modellist" role="group" aria-label="選擇模型">${models}</div>
+    <label class="check"><input type="checkbox" id="autofallback" ${s.autoFallback !== false ? 'checked' : ''}>忙碌時自動改用其他模型：伺服器忙碌或額度用完時，會先重試，再依序改用 3.7 Flash、3.5 Flash-Lite，並在卡片上標示</label>
     <details class="quota">
       <summary>各模型的免費額度說明（RPM、TPM、RPD）</summary>
       <div class="quota-body">
@@ -1391,6 +1443,7 @@ $('#importFile').addEventListener('change', async e => {
 
 document.addEventListener('change', e => {
   if (e.target.id === 'gclient'){ state.drive.clientId = e.target.value.trim() || DEFAULT_CLIENT_ID; saveDrive(); initGis(); render(); }
+  if (e.target.id === 'autofallback'){ state.settings.autoFallback = e.target.checked; saveSettings(); }
   if (e.target.id === 'driveauto'){ state.drive.auto = e.target.checked; saveDrive(); }
   if (e.target.id === 'askctxbox') state.ask.useCtx = e.target.checked;
 });
