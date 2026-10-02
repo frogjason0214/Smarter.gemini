@@ -1,0 +1,1314 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="知識探索">
+<meta name="theme-color" content="#F5F6F4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15191C" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
+<link rel="icon" href="data:image/png;base64,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">
+<title>知識探索</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] },
+  svg: { fontCache: 'global' },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','input'] }
+};
+</script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script async defer src="https://accounts.google.com/gsi/client" onload="window.__gisReady && window.__gisReady()"></script>
+<style>
+mjx-container{font-size:105%}
+mjx-container[display="true"]{display:block;overflow-x:auto;overflow-y:hidden;max-width:100%;margin:.6em 0!important;padding:2px 0}
+:root{
+  --bg:#F5F6F4; --surface:#FFFFFF; --ink:#1F2428; --muted:#68717A; --rule:#DDE1E3;
+  --accent:#2C5F7F; --accent-ink:#FFFFFF; --accent-soft:#E2EBF1; --warn:#9A5B13; --warn-soft:#F6ECDD; --L:40%;
+  --serif:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --sans:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15191C; --surface:#1D2226; --ink:#E5E8EA; --muted:#98A1A9; --rule:#2C3338;
+    --accent:#8DB8D6; --accent-ink:#10202B; --accent-soft:#22313B; --warn:#E0B074; --warn-soft:#33291C; --L:70%;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+/* header */
+.bar{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding-top:env(safe-area-inset-top,0px);border-bottom:1px solid var(--rule)}
+.bar-in{max-width:680px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-family:var(--serif);font-weight:700;font-size:18px;letter-spacing:.04em}
+.nav{display:flex;gap:4px}
+.nav button{background:none;border:0;padding:6px 8px;border-radius:8px;color:var(--muted);font-size:15px}
+.nav button[aria-current="page"]{color:var(--ink);background:var(--accent-soft)}
+
+.wrap{max-width:680px;margin:0 auto;padding:20px 20px calc(120px + env(safe-area-inset-bottom,0px))}
+
+/* trail */
+.trail{display:flex;align-items:center;gap:2px;overflow-x:auto;white-space:nowrap;font-size:13px;color:var(--muted);margin:0 -4px 8px;padding:2px 4px;scrollbar-width:none}
+.trail::-webkit-scrollbar{display:none}
+.trail button{background:none;border:0;padding:2px 4px;color:var(--muted);border-radius:4px}
+.trail button[aria-current="true"]{color:var(--ink);font-weight:600}
+.trail .sep{opacity:.5;padding:0 2px}
+
+/* card */
+.meta{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;font-size:13px;margin-top:12px}
+.meta .field{color:var(--accent);font-weight:500}
+.meta .en{color:var(--muted);font-style:italic}
+.meta .flag{color:var(--warn);background:var(--warn-soft);padding:0 6px;border-radius:4px}
+h1.title{font-family:var(--serif);font-weight:700;font-size:clamp(26px,6.4vw,32px);line-height:1.3;margin:6px 0 20px;letter-spacing:.01em}
+.body p{font-family:var(--serif);font-size:17.5px;line-height:1.95;margin:0 0 1.1em;max-width:34em;text-align:justify}
+.term{background:none;border:0;padding:0 1px;font:inherit;color:var(--ink);border-bottom:1.5px solid var(--accent);border-radius:2px;line-height:inherit}
+.term:hover,.term:active{background:var(--accent-soft)}
+.why{margin:24px 0 0;padding:2px 0 2px 14px;border-left:2px solid var(--accent);font-size:14.5px;color:var(--muted)}
+.why b{color:var(--ink);font-weight:600}
+.sources{margin:14px 0 0;padding:0;list-style:none;font-size:13.5px;color:var(--muted)}
+.sources li{padding:2px 0}
+
+.section-h{font-size:14px;font-weight:600;color:var(--muted);margin:36px 0 4px}
+.rows{border-top:1px solid var(--rule)}
+.row{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--rule);padding:14px 2px}
+.row:hover{background:color-mix(in srgb,var(--accent-soft) 50%,transparent)}
+.row .r1{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.row .t{font-size:16.5px;font-weight:600}
+.row .serif{font-family:var(--serif)}
+.row .s{font-size:13px;color:var(--muted)}
+.row .b{font-size:14px;color:var(--muted);margin-top:2px}
+.row .cached{font-size:12px;color:var(--accent)}
+
+/* states */
+.empty{padding:48px 0 24px}
+.empty h2{font-family:var(--serif);font-size:24px;line-height:1.4;margin:0 0 10px}
+.empty p{color:var(--muted);margin:0 0 20px;max-width:30em}
+.loading{padding:40px 0}
+.loading p{color:var(--muted);margin:0 0 16px}
+.pulse{height:3px;background:var(--rule);border-radius:2px;overflow:hidden;max-width:320px}
+.pulse::after{content:"";display:block;height:100%;width:35%;background:var(--accent);border-radius:2px;animation:slide 1.2s ease-in-out infinite}
+@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
+.ghost{margin-top:16px}
+.notice{background:var(--warn-soft);color:var(--ink);border-radius:10px;padding:12px 14px;margin:8px 0 16px;font-size:14.5px}
+.notice .btns{margin-top:8px;display:flex;gap:8px}
+
+/* buttons */
+.btn{border:0;border-radius:10px;padding:11px 18px;font-size:15.5px;font-weight:600;background:var(--accent);color:var(--accent-ink)}
+.btn.sec{background:var(--surface);color:var(--ink);border:1px solid var(--rule);font-weight:500}
+.btn.sm{padding:7px 12px;font-size:14px}
+.btn[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.btn.warnon[aria-pressed="true"]{background:var(--warn-soft);color:var(--warn)}
+.btn:disabled{opacity:.5;cursor:default}
+
+.actions{position:fixed;left:0;right:0;bottom:0;z-index:10;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--rule);padding:12px 0 calc(12px + env(safe-area-inset-bottom,0px))}
+.actions-in{max-width:680px;margin:0 auto;padding:0 20px;display:flex;gap:8px}
+.actions-in .btn:first-child{flex:1}
+
+/* settings */
+.group{padding:20px 0;border-bottom:1px solid var(--rule)}
+.group:last-child{border-bottom:0}
+.group h2{font-size:16px;margin:0 0 4px}
+.group .hint{font-size:13.5px;color:var(--muted);margin:0 0 12px}
+.group .hint a{color:var(--accent)}
+.field-row{display:flex;gap:8px}
+.input{flex:1;min-width:0;background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;font-size:16px}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:3px}
+.seg button{border:0;background:none;padding:7px 11px;border-radius:7px;font-size:15px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--rule);background:var(--surface);border-radius:999px;padding:6px 13px;font-size:14px;color:var(--muted)}
+.chip[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.models{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:14px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100% - 40px);text-align:center}
+.toast.show{opacity:1}
+
+/* knowledge map */
+body.maponly{overflow:hidden;overscroll-behavior:none}
+.mapwrap{position:relative;height:calc(100dvh - var(--hh,58px));overflow:hidden}
+.map{position:absolute;inset:0}
+.mapsvg{display:block;touch-action:none;cursor:grab;--fs:1}
+.mapsvg .ring{fill:none;stroke:var(--rule);stroke-width:1;stroke-dasharray:2 5;vector-effect:non-scaling-stroke}
+.mapsvg .link{fill:none;stroke:hsl(var(--h) var(--s) var(--L));stroke-width:1.6;stroke-opacity:.8;vector-effect:non-scaling-stroke}
+.mapsvg .link.off{stroke:var(--rule);stroke-opacity:1;stroke-dasharray:3 4}
+.mapsvg .node{cursor:pointer}
+.mapsvg .node .dot{fill:hsl(var(--h) var(--s) var(--L));stroke:var(--bg);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.mapsvg .node.off .dot{fill:var(--bg);stroke:var(--rule)}
+.mapsvg .node.saved .dot{fill:var(--bg);stroke:hsl(var(--h) var(--s) var(--L));stroke-width:2.5}
+.mapsvg .node.root .dot{fill:var(--accent);stroke:none}
+.mapsvg .hit{fill:transparent}
+.mapsvg text{paint-order:stroke;stroke:var(--bg);stroke-width:calc(3px * var(--fs));stroke-linejoin:round;fill:var(--ink);font-family:var(--sans)}
+.mapsvg .node.root text{fill:var(--accent-ink);stroke:none;font-family:var(--serif);font-weight:700;font-size:calc(17px * var(--fs))}
+.mapsvg .node.cat text{font-size:calc(14px * var(--fs));font-weight:700;fill:hsl(var(--h) var(--s) var(--L))}
+.mapsvg .node.sub text{font-size:calc(11px * var(--fs))}
+.mapsvg .node.card text{font-size:calc(10.5px * var(--fs));font-family:var(--serif)}
+.mapsvg .node.off text{fill:var(--muted)}
+.mapsvg.far .node.card text{display:none}
+.mapbar{position:absolute;top:10px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none}
+.mapbar .stat{font-size:13px;color:var(--muted);background:color-mix(in srgb,var(--bg) 85%,transparent);padding:4px 8px;border-radius:8px}
+.mapbar .btn{pointer-events:auto}
+.maperr{padding:40px 20px;color:var(--muted)}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:15;background:var(--surface);border-top:1px solid var(--rule);border-radius:16px 16px 0 0;box-shadow:0 -8px 28px rgba(0,0,0,.10);max-height:62dvh;overflow-y:auto;padding:16px 0 calc(16px + env(safe-area-inset-bottom,0px))}
+.sheet-in{max-width:680px;margin:0 auto;padding:0 20px}
+.sheet-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.sheet h3{font-family:var(--serif);font-size:21px;margin:0}
+.sheet .sub{font-size:13.5px;color:var(--muted);margin:2px 0 12px}
+.sheet .x{background:none;border:0;color:var(--muted);font-size:14px;padding:4px 2px}
+.sheet .go{width:100%;margin:4px 0 8px}
+.stub{color:var(--muted);margin:8px 0 20px}
+
+/* ask panel */
+.nav .askbtn{color:var(--accent);font-weight:600}
+@media (max-width:420px){.brand{display:none}.bar-in{justify-content:center}}
+body.asking{overflow:hidden}
+.askwrap{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.3);display:flex;align-items:flex-end;justify-content:center}
+.askpanel{background:var(--surface);width:100%;max-width:680px;height:min(88dvh,780px);border-radius:16px 16px 0 0;display:flex;flex-direction:column;box-shadow:0 -10px 32px rgba(0,0,0,.14)}
+@media (min-width:720px){.askwrap{align-items:center;padding:20px}.askpanel{border-radius:16px;height:min(82dvh,740px)}}
+.ask-h{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--rule)}
+.ask-h h2{font-family:var(--serif);font-size:19px;margin:0}
+.ask-h .tools{display:flex;gap:6px}
+.ask-h .tools button{background:none;border:0;color:var(--muted);font-size:14px;padding:4px 6px}
+.ask-log{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:16px;-webkit-overflow-scrolling:touch}
+.ask-empty{color:var(--muted);font-size:14.5px;margin:0}
+.msg.user{align-self:flex-end;background:var(--accent-soft);padding:9px 13px;border-radius:14px 14px 4px 14px;max-width:85%;white-space:pre-wrap;font-size:15.5px}
+.msg.model{font-family:var(--serif);font-size:16.5px;line-height:1.85}
+.msg.model p{margin:0 0 .7em}
+.msg.model p:last-child{margin-bottom:0}
+.msg.model ul{margin:0 0 .7em;padding-left:1.3em}
+.msg.model b{font-weight:700}
+.typing{color:var(--muted);font-size:14px;display:flex;align-items:center;gap:10px}
+.ask-foot{border-top:1px solid var(--rule);padding:10px 20px calc(10px + env(safe-area-inset-bottom,0px))}
+.ctx{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--muted);margin-bottom:8px}
+.ctx input{accent-color:var(--accent);width:16px;height:16px;margin:0}
+.ctx span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.composer{display:flex;gap:8px;align-items:flex-end}
+.composer textarea{flex:1;min-width:0;resize:none;height:46px;max-height:150px;background:var(--bg);border:1px solid var(--rule);border-radius:12px;padding:11px 12px;font-size:16px;line-height:1.5}
+
+/* feedback faces */
+.btn.icon{padding:0;width:42px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.btn.icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.btn.icon .eye{fill:currentColor;stroke:none}
+.btn.icon:disabled{opacity:.35}
+.actions-in{gap:6px}
+.actions-in .btn.sec:not(.icon){flex:none}
+@media (max-width:400px){.opt{display:none}.actions-in .btn{padding-left:13px;padding-right:13px}.actions-in .btn.icon{padding:0;width:40px}}
+.meta .lv{color:var(--muted)}
+.lvline{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;margin:0 0 12px;padding:9px 12px;background:var(--bg);border-radius:10px}
+.lvline b{font-weight:600}
+.lvline button{background:none;border:0;color:var(--accent);font-size:14px;padding:2px 0}
+.biaslist{margin:12px 0 0;font-size:14px;color:var(--muted)}
+
+/* drive */
+.notice.info{background:var(--accent-soft)}
+.lab{display:block;font-size:13.5px;color:var(--muted);margin:0 0 6px}
+.syncstat{font-size:14px;margin:12px 0 10px}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);margin-top:12px}
+.check input{accent-color:var(--accent);width:16px;height:16px;margin:0}
+
+@media (prefers-reduced-motion: reduce){.pulse::after{animation:none;width:100%}.toast{transition:none}}
+</style>
+</head>
+<body>
+<header class="bar"><div class="bar-in">
+  <div class="brand">知識探索</div>
+  <nav class="nav" id="nav"></nav>
+</div></header>
+<main class="wrap" id="main"></main>
+<div class="actions" id="actions" hidden></div>
+<div class="sheet" id="sheet" hidden></div>
+<div id="ask" hidden></div>
+<div class="toast" id="toast" role="status"></div>
+<input type="file" id="importFile" accept="application/json" hidden>
+
+<script>
+(() => {
+const API = 'https://generativelanguage.googleapis.com/v1beta';
+const DEFAULT_MODEL = 'gemini-2.5-flash';
+const MAX_CARDS = 400;
+
+const FIELDS = {
+  '數學':['數論','拓樸學','抽象代數','實分析','組合數學','機率論','數理邏輯','微分幾何'],
+  '物理':['量子力學','統計力學','凝態物理','粒子物理','廣義相對論','光學','流體力學'],
+  '化學':['物理化學','有機化學','無機化學','量子化學','電化學','高分子化學'],
+  '生物學':['分子生物學','演化生物學','生態學','遺傳學','細胞生物學','植物生理學'],
+  '醫學':['免疫學','藥理學','流行病學','神經科學','病理學','內分泌學'],
+  '地球與太空':['地質學','大氣科學','海洋學','行星科學','天文物理','宇宙學'],
+  '工程':['控制理論','材料科學','結構力學','訊號處理','熱傳學','電力系統'],
+  '資訊':['演算法','計算理論','密碼學','分散式系統','資訊理論','編譯器','機器學習理論'],
+  '統計':['數理統計','貝氏統計','因果推論','實驗設計','時間序列分析'],
+  '經濟與金融':['個體經濟學','賽局理論','機制設計','總體經濟學','計量經濟學','資產定價'],
+  '社會科學':['社會學','政治學','人類學','社會網絡分析'],
+  '心理與認知':['認知心理學','心理計量學','知覺心理學','行為決策'],
+  '語言學':['音韻學','句法學','語意學','歷史語言學','語用學'],
+  '哲學與邏輯':['形式邏輯','知識論','心靈哲學','科學哲學','決策理論'],
+  '歷史與考古':['考古學方法','科學史','經濟史','古文字學'],
+  '藝術與音樂':['音樂理論','聲學','色彩科學','建築史']
+};
+const ANGLES = ['一個定理或定律','一個經實驗確認的現象','一個以人名命名的效應或原理','一個重要的方法或演算法','一個反直覺但已被證實的結果','一個經典實驗及其結論','一個基本概念背後的嚴格定義'];
+const LEVELS = ['高中','大學部','碩士','博士','專家'];
+const LEVEL_DESC = {
+  '高中':'高中生能理解；避免高等數學與過多術語，但概念必須正確，可用具體例子說明',
+  '大學部':'大學部學生能理解；可使用基礎微積分與入門術語，著重核心觀念與直覺',
+  '碩士':'碩士生能理解；內容要有深度，寫出關鍵條件、機制或數學敘述',
+  '博士':'博士生程度；可直接使用專業術語與嚴格數學，著重精確條件、推導關鍵與適用範圍',
+  '專家':'該領域研究者程度；選擇較精細的已確立結果，討論邊界條件、證明或實驗設計的關鍵與常見誤解'
+};
+
+const SYSTEM = `你是一位跨領域的研究所教授，負責為學生撰寫「知識點卡片」。
+規則：
+1. 全部使用繁體中文與台灣學界慣用譯名；專有名詞第一次出現時不必附英文，英文放在 JSON 欄位中。
+2. 只選擇已被數學證明的定理、經多次獨立重複驗證的實驗結果，或教科書級的學界共識。避免仍有爭議、僅有單一研究支持、或已被修正的說法。若主題有尚未解決的延伸問題，必須在內文中明確區分「已確立」與「仍在研究」的部分。
+3. body 寫 2 到 3 段，共約 250 到 450 字，段落之間用 \\n\\n 分隔。內容要具體：寫出關鍵條件、機制或數學敘述，而不只是概述。
+4. 在 body 中挑 3 到 5 個值得延伸學習的專有名詞，用 [[ ]] 標記，例如 [[柏拉圖效率]]。標記文字必須與 terms 陣列中的 term 完全一致。不要標記 title 本身。
+5. sources 只列你確定存在的經典教科書或原始論文，1 到 3 筆；不確定就少列，絕不杜撰。
+6. 數學式一律用 LaTeX：行內式寫在 $...$ 中，獨立成行的式子寫在 $$...$$ 中。JSON 字串裡的反斜線必須寫成兩個（例如 \\\\log）。不要把數學式放進 [[ ]] 標記內。
+7. 只輸出一個 JSON 物件，不要有任何其他文字。格式：
+{"title":"知識點名稱","english":"英文名稱","field":"領域／子領域","body":"內文","terms":[{"term":"名詞","english":"英文","brief":"30 字內的一句話說明"}],"consensus":"一句話說明為何這是已確立的知識","sources":[{"title":"書名或論文名","author":"作者","year":"年份"}]}`;
+
+// ---------- storage ----------
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch{ toast('瀏覽器儲存空間不足，請到設定匯出備份後清除資料。'); return false; } }
+};
+
+const state = {
+  view: 'explore',
+  settings: Object.assign({ key:'', model:DEFAULT_MODEL, level:'碩士', fields:[] }, store.get('kx_settings', {})),
+  cards: store.get('kx_cards', {}),
+  saved: store.get('kx_saved', []),
+  seen: store.get('kx_seen', []),
+  termIndex: store.get('kx_terms', {}),
+  bias: store.get('kx_bias', {}),
+  biasAt: store.get('kx_biasat', 0),
+  savedLog: store.get('kx_savedlog', {}),
+  path: store.get('kx_path', []),
+  loading: false, loadingText: '', error: '', retry: null, controller: null,
+  models: []
+};
+state.path = state.path.filter(id => state.cards[id]);
+state.sheet = null; state.mapT = null;
+
+// 舊資料：補上分類（大領域／子領域），並把「生命科學」改名為「生物學」
+(function classify(){
+  const REN = { '生命科學':'生物學' };
+  state.settings.fields = (state.settings.fields || []).map(f => REN[f] || f).filter(f => FIELDS[f]);
+  const subs = Object.entries(FIELDS).flatMap(([cat, arr]) => arr.map(sub => ({ cat, sub })));
+  let changed = false;
+  const cards = Object.values(state.cards);
+  for (const c of cards){
+    if (c.cat && REN[c.cat]){ c.cat = REN[c.cat]; changed = true; }
+    if (c.cat !== undefined || (c.parentId && state.cards[c.parentId])) continue;
+    const text = (c.field || '') + ' ' + (c.title || '');
+    const hit = subs.find(x => text.includes(x.sub));
+    if (hit){ c.cat = hit.cat; c.sub = hit.sub; }
+    else {
+      const ALIAS = { '數學':['數學'], '物理':['物理'], '化學':['化學'], '生物學':['生物','生命科學'], '醫學':['醫學','藥'],
+        '地球與太空':['地球','地質','天文','太空','行星'], '工程':['工程','材料'], '資訊':['資訊','計算機','電腦','演算'],
+        '統計':['統計'], '經濟與金融':['經濟','金融','社會選擇'], '社會科學':['社會','政治','人類學'],
+        '心理與認知':['心理','認知'], '語言學':['語言'], '哲學與邏輯':['哲學','邏輯'],
+        '歷史與考古':['歷史','考古'], '藝術與音樂':['藝術','音樂','建築'] };
+      c.cat = Object.keys(ALIAS).find(k => ALIAS[k].some(w => text.includes(w))) || '未分類'; c.sub = null;
+    }
+    changed = true;
+  }
+  const resolve = (c, depth) => {
+    if (c.cat !== undefined) return;
+    const p = state.cards[c.parentId];
+    if (p && depth < 60){ resolve(p, depth + 1); c.cat = p.cat; c.sub = p.sub; }
+    else { c.cat = '未分類'; c.sub = null; }
+    changed = true;
+  };
+  cards.forEach(c => resolve(c, 0));
+  if (changed){ store.set('kx_cards', state.cards); store.set('kx_settings', state.settings); }
+})();
+
+function persist(){
+  store.set('kx_cards', state.cards);
+  store.set('kx_saved', state.saved);
+  store.set('kx_savedlog', state.savedLog);
+  store.set('kx_seen', state.seen.slice(-300));
+  store.set('kx_terms', state.termIndex);
+  store.set('kx_bias', state.bias);
+  store.set('kx_biasat', state.biasAt);
+  store.set('kx_path', state.path);
+  scheduleSync();
+}
+
+// ---------- 備份、合併與 Google Drive 同步 ----------
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_FILE = 'knowledge-explorer-backup.json';
+state.drive = Object.assign({ clientId:'', connected:false, auto:true, lastSync:0 }, store.get('kx_drive', {}));
+const rt = { token:null, exp:0, client:null, busy:false, pending:null, timer:null, applying:false, dismissed:false };
+const saveDrive = () => store.set('kx_drive', state.drive);
+const tokenValid = () => !!rt.token && Date.now() < rt.exp;
+const fmtDateTime = ts => new Date(ts).toLocaleString('zh-TW', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:false });
+
+function snapshot(){
+  return { app:'knowledge-explorer', version:2, exportedAt:new Date().toISOString(),
+    cards:state.cards, saved:state.saved, savedLog:state.savedLog, seen:state.seen.slice(-300),
+    termIndex:state.termIndex, bias:state.bias, biasAt:state.biasAt };
+}
+
+// 把另一份備份（雲端或檔案）合併進目前資料；同一張卡片以較新的修改為準
+function mergeBackup(data){
+  if (!data || typeof data.cards !== 'object') throw new Error('備份內容格式不正確。');
+  let added = 0, changed = false;
+  for (const [id, rc] of Object.entries(data.cards)){
+    if (!rc || !rc.id) continue;
+    const lc = state.cards[id];
+    if (!lc){ state.cards[id] = rc; added++; changed = true; continue; }
+    const lt = lc.updatedAt || lc.createdAt || 0, rtm = rc.updatedAt || rc.createdAt || 0;
+    let win = rtm > lt ? rc : lc;
+    const other = win === rc ? lc : rc;
+    if (win.stub && !other.stub){
+      win = Object.assign({}, win, { body:other.body, terms:other.terms, sources:other.sources, consensus:other.consensus });
+      delete win.stub;
+    }
+    if (win !== lc){ state.cards[id] = win; changed = true; }
+  }
+  const rlog = data.savedLog || {};
+  for (const [id, entry] of Object.entries(rlog)){
+    if (!state.savedLog[id] || entry.t > state.savedLog[id].t) state.savedLog[id] = entry;
+  }
+  const before = state.saved.join(',');
+  let saved = [...new Set([...state.saved, ...(data.saved || [])])];
+  for (const [id, entry] of Object.entries(state.savedLog)){
+    if (entry.on && !saved.includes(id)) saved.push(id);
+    if (!entry.on) saved = saved.filter(x => x !== id);
+  }
+  state.saved = saved.filter(id => state.cards[id]);
+  if (state.saved.join(',') !== before) changed = true;
+  state.seen = [...new Set([...state.seen, ...(data.seen || [])])];
+  for (const [k, v] of Object.entries(data.termIndex || {})) if (!state.termIndex[k] && state.cards[v]) state.termIndex[k] = v;
+  if ((data.biasAt || 0) > state.biasAt){ state.bias = data.bias || {}; state.biasAt = data.biasAt; changed = true; }
+  rt.applying = true; persist(); rt.applying = false;
+  return { added, changed };
+}
+
+function initGis(){
+  rt.client = null;
+  const id = state.drive.clientId.trim();
+  if (!id || !window.google || !google.accounts || !google.accounts.oauth2) return;
+  rt.client = google.accounts.oauth2.initTokenClient({
+    client_id: id, scope: DRIVE_SCOPE,
+    callback: resp => {
+      if (resp.error){ rt.pending = null; toast('Google 授權失敗：' + resp.error); return; }
+      rt.token = resp.access_token;
+      rt.exp = Date.now() + (Number(resp.expires_in) || 3600) * 1000 - 60000;
+      const f = rt.pending; rt.pending = null;
+      if (f) f();
+    },
+    error_callback: err => {
+      rt.pending = null;
+      toast(err && err.type === 'popup_closed' ? '已取消 Google 登入' : '無法開啟 Google 登入視窗。若你是從主畫面圖示開啟，請改用 Safari 開啟這個網址再試一次。');
+    }
+  });
+}
+window.__gisReady = () => { initGis(); if (state.view === 'settings') safeRender(); };
+
+// 必須在點擊事件中同步呼叫，瀏覽器才會允許跳出登入視窗
+function withToken(fn){
+  if (tokenValid()){ fn(); return; }
+  if (!state.drive.clientId.trim()){ toast('請先填入 OAuth 用戶端 ID'); return; }
+  if (!rt.client){ toast('Google 登入元件尚未載入，請確認網路連線後重新整理。'); return; }
+  rt.pending = fn;
+  rt.client.requestAccessToken({ prompt: state.drive.connected ? '' : 'consent' });
+}
+
+async function driveFetch(url, opts = {}){
+  let res;
+  try{
+    res = await fetch(url, Object.assign({}, opts, { headers: Object.assign({ Authorization:'Bearer ' + rt.token }, opts.headers || {}) }));
+  }catch{ throw new Error('無法連線到 Google Drive，請確認網路連線。'); }
+  if (res.status === 401){ rt.token = null; throw new Error('Google 登入已過期，請再按一次「立即同步」。'); }
+  if (!res.ok){
+    let msg = res.statusText;
+    try{ msg = (await res.json()).error.message; }catch{}
+    if (res.status === 403) throw new Error('Google Drive 拒絕存取。請確認已在 Cloud Console 啟用 Google Drive API：' + msg);
+    throw new Error(`Google Drive 錯誤（${res.status}）：${msg}`);
+  }
+  return res;
+}
+
+async function driveSync(silent){
+  if (rt.busy || !tokenValid()) return;
+  rt.busy = true; clearTimeout(rt.timer);
+  if (!silent) safeRender();
+  let result = { added:0, changed:false };
+  try{
+    const q = encodeURIComponent(`name='${DRIVE_FILE}'`);
+    const list = await (await driveFetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&fields=files(id,modifiedTime)&orderBy=modifiedTime%20desc&pageSize=1`)).json();
+    const file = list.files && list.files[0];
+    if (file){
+      const remote = await (await driveFetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`)).json();
+      result = mergeBackup(remote);
+    }
+    const body = JSON.stringify(snapshot());
+    if (file){
+      await driveFetch(`https://www.googleapis.com/upload/drive/v3/files/${file.id}?uploadType=media`, {
+        method:'PATCH', headers:{ 'Content-Type':'application/json' }, body });
+    } else {
+      const b = 'kx' + uid();
+      const meta = { name:DRIVE_FILE, parents:['appDataFolder'], mimeType:'application/json' };
+      await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+        method:'POST', headers:{ 'Content-Type':`multipart/related; boundary=${b}` },
+        body:`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${b}--` });
+    }
+    state.drive.connected = true; state.drive.lastSync = Date.now(); saveDrive();
+    rt.dismissed = true;
+    if (!silent) toast(result.added ? `已同步，從雲端取回 ${result.added} 張卡片` : '已和 Google Drive 同步');
+  }catch(e){
+    toast(e.message);
+  }finally{
+    rt.busy = false;
+    if (!silent || result.changed) safeRender();
+  }
+}
+
+function scheduleSync(){
+  if (rt.applying || !state.drive.connected || !state.drive.auto || !tokenValid()) return;
+  clearTimeout(rt.timer);
+  rt.timer = setTimeout(() => driveSync(true), 15000);
+}
+
+// 正在輸入時不重繪，避免打斷
+function safeRender(){
+  const a = document.activeElement;
+  if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && a.type !== 'checkbox') return;
+  render();
+}
+function saveSettings(){ store.set('kx_settings', state.settings); }
+
+// ---------- helpers ----------
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const plain = s => String(s || '').replace(/\[\[(.+?)\]\]/g, '$1');
+const fmtDate = ts => new Date(ts).toLocaleDateString('zh-TW', { month:'numeric', day:'numeric' });
+const current = () => state.cards[state.path[state.path.length - 1]];
+
+let toastTimer;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+function addCard(card){
+  state.cards[card.id] = card;
+  state.termIndex[card.title] = card.id;
+  // 超過上限時，只清除最舊卡片的內文，保留標題與分支關係，知識樹不會缺角
+  const full = Object.values(state.cards).filter(c => !c.stub);
+  if (full.length > MAX_CARDS){
+    const keep = new Set([...state.saved, ...state.path]);
+    full.filter(c => !keep.has(c.id))
+        .sort((a, b) => a.createdAt - b.createdAt)
+        .slice(0, full.length - MAX_CARDS)
+        .forEach(c => Object.assign(c, { stub:true, body:'', terms:[], sources:[], consensus:'' }));
+  }
+}
+
+// ---------- 難度（以大領域為單位）----------
+const baseIdx = () => { const i = LEVELS.indexOf(state.settings.level); return i < 0 ? 2 : i; };
+const clampIdx = i => Math.max(0, Math.min(LEVELS.length - 1, i));
+function levelFor(cat){ return LEVELS[clampIdx(baseIdx() + ((FIELDS[cat] && state.bias[cat]) || 0))]; }
+function shiftBias(cat, step){
+  const b = baseIdx();
+  const now = clampIdx(b + (state.bias[cat] || 0));
+  const next = clampIdx(now + step);
+  if (next === b) delete state.bias[cat]; else state.bias[cat] = next - b;
+  state.biasAt = Date.now();
+}
+function vote(c, dir){
+  if (!c || !FIELDS[c.cat]){ toast('這張卡片沒有領域分類，無法調整難度'); return; }
+  const prev = c.vote || 0;
+  const next = prev === dir ? 0 : dir;
+  if (next - prev) shiftBias(c.cat, next - prev);
+  c.vote = next; c.updatedAt = Date.now();
+  persist(); render();
+  const lv = levelFor(c.cat);
+  toast(next === 0 ? `已取消，${c.cat}目前難度：${lv}` : `下次的${c.cat}知識點會是「${lv}」程度`);
+}
+
+function lineage(id){
+  const out = []; const seen = new Set();
+  let c = state.cards[id];
+  while (c && !seen.has(c.id)){ out.unshift(c.id); seen.add(c.id); c = state.cards[c.parentId]; }
+  return out;
+}
+
+function normalize(raw, extra){
+  const body = String(raw.body || '').trim();
+  let terms = Array.isArray(raw.terms) ? raw.terms.filter(t => t && t.term).map(t => ({
+    term:String(t.term).trim(), english:String(t.english || '').trim(), brief:String(t.brief || '').trim()
+  })) : [];
+  for (const m of body.matchAll(/\[\[(.+?)\]\]/g)){
+    const name = m[1].trim();
+    if (!terms.some(t => t.term === name)) terms.push({ term:name, english:'', brief:'' });
+  }
+  return Object.assign({
+    id: uid(),
+    title: String(raw.title || '').trim(),
+    english: String(raw.english || '').trim(),
+    field: String(raw.field || '').trim(),
+    body, terms,
+    consensus: String(raw.consensus || '').trim(),
+    sources: Array.isArray(raw.sources) ? raw.sources.filter(s => s && s.title).slice(0, 4) : [],
+    createdAt: Date.now(), doubt: false
+  }, extra);
+}
+
+// ---------- Gemini ----------
+function modelName(){ return (state.settings.model || DEFAULT_MODEL).trim().replace(/^models\//, ''); }
+
+async function geminiRequest(payload, signal){
+  const model = modelName();
+  let res;
+  try{
+    res = await fetch(`${API}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(state.settings.key.trim())}`, {
+      method:'POST', headers:{ 'Content-Type':'application/json' }, signal,
+      body: JSON.stringify(payload)
+    });
+  }catch(e){
+    if (e.name === 'AbortError') throw e;
+    throw new Error('無法連線到 Gemini，請確認網路連線。');
+  }
+  let data = {};
+  try{ data = await res.json(); }catch{}
+  if (!res.ok){
+    const msg = data?.error?.message || res.statusText;
+    if (res.status === 429) throw new Error('已達免費額度上限（每分鐘或每日請求數），請稍後再試。');
+    if (res.status === 404) throw new Error(`找不到模型「${model}」。請到設定按「檢查可用模型」重新選擇。`);
+    if (/API key/i.test(msg) || res.status === 401 || res.status === 403) throw new Error('API 金鑰無效或沒有權限，請到設定確認金鑰。');
+    throw new Error(`Gemini 回傳錯誤（${res.status}）：${msg}`);
+  }
+  const cand = data.candidates?.[0];
+  const text = (cand?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join('');
+  if (!text){
+    const why = data.promptFeedback?.blockReason || cand?.finishReason || '未知原因';
+    throw new Error(`沒有收到內容（${why}），請再試一次。`);
+  }
+  return text;
+}
+
+async function callGemini(userText, signal){
+  const text = await geminiRequest({
+    systemInstruction:{ parts:[{ text:SYSTEM }] },
+    contents:[{ role:'user', parts:[{ text:userText }] }],
+    generationConfig:{ responseMimeType:'application/json', temperature:1 }
+  }, signal);
+  const clean = text.replace(/```json|```/g, '').trim();
+  const a = clean.indexOf('{'), b = clean.lastIndexOf('}');
+  let obj;
+  try{ obj = JSON.parse(clean.slice(a, b + 1)); }catch{ throw new Error('回傳內容格式有誤，請再試一次。'); }
+  if (!obj.title || !obj.body) throw new Error('回傳內容不完整，請再試一次。');
+  return obj;
+}
+
+async function run(userText, loadingText, retry){
+  if (state.loading) return null;
+  state.loading = true; state.loadingText = loadingText; state.error = ''; state.retry = retry;
+  state.controller = new AbortController();
+  render();
+  try{
+    const raw = await callGemini(userText, state.controller.signal);
+    state.loading = false; state.controller = null;
+    return raw;
+  }catch(e){
+    state.loading = false; state.controller = null;
+    state.error = e.name === 'AbortError' ? '' : e.message;
+    render();
+    return null;
+  }
+}
+
+function pickField(){
+  const cats = state.settings.fields.length ? state.settings.fields : Object.keys(FIELDS);
+  const cat = pick(cats);
+  return { cat, sub: pick(FIELDS[cat]) };
+}
+
+async function newPoint(opts = {}){
+  const { cat, sub } = opts.cat && FIELDS[opts.cat]
+    ? { cat: opts.cat, sub: opts.sub && FIELDS[opts.cat].includes(opts.sub) ? opts.sub : pick(FIELDS[opts.cat]) }
+    : pickField();
+  const angle = pick(ANGLES);
+  const lv = levelFor(cat);
+  const branch = Object.values(state.cards).filter(c => c.sub === sub).map(c => c.title);
+  const seen = [...new Set([...branch, ...state.seen.slice(-60)])].join('、') || '（無）';
+  const prompt = `請產生一張新的知識點卡片。
+領域：${cat}／${sub}
+切入角度：${angle}
+程度：${lv}（${LEVEL_DESC[lv]}）
+請挑一個不那麼常見、但在該領域內是標準知識的主題，避開以下已看過的主題：${seen}`;
+  const raw = await run(prompt, `正在從「${sub}」挑選知識點`, () => newPoint(opts));
+  if (!raw) return;
+  const card = normalize(raw, { kind:'point', parentId:null, cat, sub, level:lv });
+  addCard(card);
+  state.seen.push(card.title);
+  state.path = [card.id];
+  persist(); render(); window.scrollTo(0, 0);
+}
+
+async function openTerm(term, english){
+  const existing = state.termIndex[term];
+  if (existing && state.cards[existing]){ goTo(existing); return; }
+  const parent = current();
+  const lv = levelFor(parent ? parent.cat : '');
+  const ctx = parent ? `它出現在知識點「${parent.title}」的脈絡中：${plain(parent.body).slice(0, 700)}` : '';
+  const prompt = `請以專有名詞「${term}」${english ? `（${english}）` : ''}為主題，撰寫一張知識點卡片，title 就是「${term}」。
+${ctx}
+請在內文中說明它與上述脈絡的關聯。程度：${lv}（${LEVEL_DESC[lv]}）`;
+  const raw = await run(prompt, `正在展開「${term}」`, () => openTerm(term, english));
+  if (!raw) return;
+  const card = normalize(raw, { kind:'term', parentId: parent ? parent.id : null, cat: parent ? parent.cat : '未分類', sub: parent ? parent.sub : null, level:lv });
+  card.title = term;
+  if (english && !card.english) card.english = english;
+  addCard(card);
+  state.path.push(card.id);
+  persist(); render(); window.scrollTo(0, 0);
+}
+
+async function regen(c){
+  if (!c) return;
+  const parent = state.cards[c.parentId];
+  const ctx = parent ? `它屬於「${parent.title}」的延伸主題。` : '';
+  const prompt = `請以「${c.title}」${c.english ? `（${c.english}）` : ''}為主題，撰寫一張知識點卡片，title 就是「${c.title}」。${ctx}程度：${levelFor(c.cat)}（${LEVEL_DESC[levelFor(c.cat)]}）`;
+  const raw = await run(prompt, `正在重新產生「${c.title}」`, () => regen(c));
+  if (!raw) return;
+  const fresh = normalize(raw, {});
+  const target = state.cards[c.id] || c;
+  Object.assign(target, { english: target.english || fresh.english, field: fresh.field || target.field,
+    body: fresh.body, terms: fresh.terms, consensus: fresh.consensus, sources: fresh.sources });
+  delete target.stub;
+  target.updatedAt = Date.now();
+  state.cards[target.id] = target;
+  persist(); render();
+}
+
+function goTo(id){
+  const i = state.path.indexOf(id);
+  if (i >= 0) state.path = state.path.slice(0, i + 1);
+  else state.path.push(id);
+  persist(); render(); window.scrollTo(0, 0);
+}
+
+async function checkModels(){
+  if (!state.settings.key.trim()){ toast('請先填入 API 金鑰。'); return; }
+  try{
+    const res = await fetch(`${API}/models?pageSize=200&key=${encodeURIComponent(state.settings.key.trim())}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || res.statusText);
+    state.models = (data.models || [])
+      .filter(m => (m.supportedGenerationMethods || []).includes('generateContent') && /gemini/i.test(m.name))
+      .map(m => m.name.replace(/^models\//, ''));
+    if (!state.models.length) toast('沒有找到可用的 Gemini 模型。');
+    render();
+  }catch(e){ toast('檢查失敗：' + e.message); }
+}
+
+// ---------- 即時提問 ----------
+const ASK_SYSTEM = `你是一位知識淵博的研究所教授，正在回答學生的即時提問。
+1. 使用繁體中文與台灣學界慣用譯名，專有名詞可在括號附上英文。
+2. 先給結論再解釋，回答精確、直接；一般問題約 150 到 400 字，學生要求詳細時再展開。
+3. 區分已確立的知識與仍有爭議或尚在研究的部分；不確定時明確說不確定，不要杜撰引用、數據或文獻。
+4. 數學式用 LaTeX：行內式寫在 $...$ 中，獨立式寫在 $$...$$ 中。
+5. 可以使用段落、**粗體**與「- 」開頭的條列，但不要使用 Markdown 標題或表格。`;
+
+state.ask = { open:false, msgs:[], loading:false, error:'', useCtx:true, draft:'', controller:null };
+
+function mdLite(text){
+  const out = []; let para = [], list = [];
+  const inline = t => t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  const flushP = () => { if (para.length){ out.push('<p>' + para.map(inline).join('<br>') + '</p>'); para = []; } };
+  const flushL = () => { if (list.length){ out.push('<ul>' + list.map(l => '<li>' + inline(l) + '</li>').join('') + '</ul>'); list = []; } };
+  for (let line of esc(text).split('\n')){
+    line = line.replace(/^#{1,6}\s+(.*)$/, '**$1**');
+    const m = line.match(/^\s*[-*•]\s+(.*)$/);
+    if (m){ flushP(); list.push(m[1]); }
+    else if (!line.trim()){ flushP(); flushL(); }
+    else { flushL(); para.push(line.trim()); }
+  }
+  flushP(); flushL();
+  return out.join('');
+}
+
+function openAsk(){
+  state.ask.open = true;
+  renderAsk();
+  setTimeout(() => $('#askinput')?.focus(), 60);
+}
+function closeAsk(){ state.ask.open = false; renderAsk(); }
+
+function renderAsk(){
+  const el = $('#ask');
+  document.body.classList.toggle('asking', state.ask.open);
+  if (!state.ask.open){ el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  if (!el.firstChild){
+    el.innerHTML = `<div class="askwrap" id="askwrap">
+      <div class="askpanel" role="dialog" aria-modal="true" aria-labelledby="askTitle">
+        <div class="ask-h"><h2 id="askTitle">提問</h2>
+          <div class="tools"><button data-act="askclear">清除對話</button><button data-act="askclose">關閉</button></div></div>
+        <div class="ask-log" id="asklog" aria-live="polite"></div>
+        <div class="ask-foot">
+          <div id="askctx"></div>
+          <div class="composer">
+            <textarea id="askinput" rows="1" placeholder="輸入你想問的問題" aria-label="輸入問題"></textarea>
+            <button class="btn" id="asksend" data-act="asksend">送出</button>
+          </div>
+        </div>
+      </div></div>`;
+    $('#askinput').value = state.ask.draft;
+  }
+  updateAsk();
+}
+
+function updateAsk(){
+  const log = $('#asklog');
+  if (!log) return;
+  const a = state.ask;
+  let html = '';
+  if (!state.settings.key.trim()){
+    html = '<p class="ask-empty">需要先在設定填入 Gemini API 金鑰才能提問。</p>';
+  } else if (!a.msgs.length && !a.loading){
+    html = `<p class="ask-empty">${current() ? '可以問任何問題，也可以針對目前這張卡片追問細節，例如推導過程、反例或實際應用。' : '可以問任何問題，例如請它解釋一個概念、比較兩個理論，或推導一條公式。'}</p>`;
+  }
+  html += a.msgs.map(m => m.role === 'user'
+    ? `<div class="msg user">${esc(m.text)}</div>`
+    : `<div class="msg model">${mdLite(m.text)}</div>`).join('');
+  if (a.loading) html += '<div class="typing"><span>正在思考</span><button class="btn sm sec" data-act="askcancel">取消</button></div>';
+  if (a.error) html += `<div class="notice" role="alert">${esc(a.error)}<div class="btns"><button class="btn sm" data-act="askretry">再試一次</button></div></div>`;
+  log.innerHTML = html;
+
+  const card = current();
+  $('#askctx').innerHTML = card && !card.stub
+    ? `<label class="ctx"><input type="checkbox" id="askctxbox" ${a.useCtx ? 'checked' : ''}><span>附上目前的卡片「${esc(card.title)}」作為背景</span></label>`
+    : '';
+  $('#asksend').disabled = a.loading;
+  if (window.MathJax && MathJax.typesetPromise){
+    MathJax.typesetClear && MathJax.typesetClear([log]);
+    MathJax.typesetPromise([log]).then(() => { log.scrollTop = log.scrollHeight; }).catch(() => {});
+  }
+  log.scrollTop = log.scrollHeight;
+}
+
+function askSend(){
+  const a = state.ask;
+  const q = a.draft.trim();
+  if (!q || a.loading) return;
+  if (!state.settings.key.trim()){ toast('請先到設定填入 API 金鑰'); return; }
+  a.msgs.push({ role:'user', text:q });
+  a.draft = '';
+  const input = $('#askinput');
+  if (input){ input.value = ''; input.style.height = ''; }
+  askCall();
+}
+
+async function askCall(){
+  const a = state.ask;
+  if (a.loading || !a.msgs.length) return;
+  a.loading = true; a.error = ''; a.controller = new AbortController();
+  updateAsk();
+  const card = current();
+  let sys = ASK_SYSTEM;
+  if (a.useCtx && card && !card.stub){
+    sys += `\n\n學生目前正在閱讀以下知識卡片，問題可能與它有關：\n「${card.title}」（${card.field}）\n${plain(card.body)}`;
+  }
+  let hist = a.msgs.slice(-12);
+  while (hist.length && hist[0].role !== 'user') hist = hist.slice(1);
+  try{
+    const text = await geminiRequest({
+      systemInstruction:{ parts:[{ text:sys }] },
+      contents: hist.map(m => ({ role:m.role, parts:[{ text:m.text }] })),
+      generationConfig:{ temperature:0.7 }
+    }, a.controller.signal);
+    a.msgs.push({ role:'model', text:text.trim() });
+  }catch(e){
+    if (e.name === 'AbortError'){
+      const last = a.msgs.pop();
+      if (last && last.role === 'user'){ a.draft = last.text; const i = $('#askinput'); if (i) i.value = last.text; }
+    } else a.error = e.message;
+  }finally{
+    a.loading = false; a.controller = null;
+    updateAsk();
+  }
+}
+
+// ---------- render ----------
+function renderNav(){
+  const items = [['explore','探索'],['tree','知識樹'],['library','收藏'],['settings','設定']];
+  $('#nav').innerHTML = `<button class="askbtn" data-act="ask" aria-haspopup="dialog">提問</button>` + items.map(([v, l]) =>
+    `<button data-act="view" data-view="${v}" ${state.view === v ? 'aria-current="page"' : ''}>${l}</button>`).join('');
+}
+
+function renderBody(body){
+  return String(body).split(/\n+/).map(p => p.trim()).filter(Boolean).map(p =>
+    '<p>' + esc(p).replace(/\[\[(.+?)\]\]/g, (m, t) => `<button class="term" data-act="term" data-term="${t}">${t}</button>`) + '</p>'
+  ).join('');
+}
+
+function renderTrail(){
+  if (state.path.length < 2) return '';
+  return '<nav class="trail" aria-label="探索路徑">' + state.path.map((id, i) => {
+    const c = state.cards[id]; const last = i === state.path.length - 1;
+    return (i ? '<span class="sep">›</span>' : '') +
+      `<button data-act="trail" data-id="${id}" ${last ? 'aria-current="true"' : ''}>${esc(c.title)}</button>`;
+  }).join('') + '</nav>';
+}
+
+function renderCard(c){
+  if (c.stub){
+    return `<article>
+      <div class="meta">${c.field ? `<span class="field">${esc(c.field)}</span>` : ''}${c.english ? `<span class="en">${esc(c.english)}</span>` : ''}</div>
+      <h1 class="title">${esc(c.title)}</h1>
+      <p class="stub">為了節省儲存空間，這張卡片的內文已被清除，但它仍保留在你的知識樹裡。</p>
+      <button class="btn" data-act="regen">重新產生內容</button>
+    </article>`;
+  }
+  const src = c.sources.map(s => {
+    const by = [s.author, s.year].filter(Boolean).join('，');
+    return `<li>${esc(s.title)}${by ? `（${esc(by)}）` : ''}</li>`;
+  }).join('');
+  const terms = c.terms.map(t => {
+    const cached = state.termIndex[t.term] && state.cards[state.termIndex[t.term]];
+    return `<button class="row" data-act="term" data-term="${esc(t.term)}" data-en="${esc(t.english)}">
+      <div class="r1"><span class="t">${esc(t.term)}</span>${t.english ? `<span class="s">${esc(t.english)}</span>` : ''}${cached ? '<span class="cached">已展開</span>' : ''}</div>
+      ${t.brief ? `<div class="b">${esc(t.brief)}</div>` : ''}
+    </button>`;
+  }).join('');
+  return `<article>
+    <div class="meta">
+      ${c.field ? `<span class="field">${esc(c.field)}</span>` : ''}
+      ${c.english ? `<span class="en">${esc(c.english)}</span>` : ''}
+      ${c.level ? `<span class="lv">${esc(c.level)}程度</span>` : ''}
+      ${c.doubt ? '<span class="flag">已標記存疑</span>' : ''}
+    </div>
+    <h1 class="title">${esc(c.title)}</h1>
+    <div class="body">${renderBody(c.body)}</div>
+    ${c.consensus ? `<p class="why"><b>為何可信：</b>${esc(c.consensus)}</p>` : ''}
+    ${src ? `<ul class="sources">${src}</ul>` : ''}
+    ${terms ? `<h2 class="section-h">延伸名詞</h2><div class="rows">${terms}</div>` : ''}
+  </article>`;
+}
+
+function renderExplore(){
+  if (!state.settings.key.trim()){
+    return `<div class="empty"><h2>先設定 Gemini API 金鑰</h2>
+      <p>金鑰只會存在這台裝置的瀏覽器裡。設定好之後，就能隨機取得知識點，並沿著專有名詞一路往下延伸。</p>
+      <button class="btn" data-act="view" data-view="settings">前往設定</button></div>`;
+  }
+  let html = '';
+  if (state.drive.connected && state.drive.auto && !rt.dismissed && !tokenValid() && Date.now() - state.drive.lastSync > 20 * 3600 * 1000){
+    html += `<div class="notice info">距離上次同步 Google Drive 已超過一天。
+      <div class="btns"><button class="btn sm" data-act="drivesync">立即同步</button><button class="btn sm sec" data-act="drivedismiss">略過</button></div></div>`;
+  }
+  html += state.error ? `<div class="notice" role="alert">${esc(state.error)}
+    <div class="btns">${state.retry ? '<button class="btn sm" data-act="retry">再試一次</button>' : ''}<button class="btn sm sec" data-act="dismiss">關閉</button></div></div>` : '';
+  html += renderTrail();
+  if (state.loading){
+    return html + `<div class="loading" aria-live="polite"><p>${esc(state.loadingText)}</p><div class="pulse"></div>
+      <button class="btn sm sec ghost" data-act="cancel">取消</button></div>`;
+  }
+  const c = current();
+  if (c) return html + renderCard(c);
+  return html + `<div class="empty"><h2>今天想認識什麼？</h2>
+    <p>每次會從你在設定中選的領域隨機挑一個知識點。點畫底線的名詞，就能繼續往下探索。</p></div>`;
+}
+
+function renderLibrary(){
+  const row = c => `<button class="row" data-act="open" data-id="${c.id}">
+    <div class="r1"><span class="t serif">${esc(c.title)}</span>${c.doubt ? '<span class="s" style="color:var(--warn)">存疑</span>' : ''}</div>
+    <div class="b">${esc(c.field || '')}${c.field ? '，' : ''}${fmtDate(c.createdAt)}</div></button>`;
+  const saved = state.saved.map(id => state.cards[id]).filter(Boolean).reverse();
+  const recent = Object.values(state.cards).sort((a, b) => b.createdAt - a.createdAt).slice(0, 30);
+  return `<h2 class="section-h" style="margin-top:8px">收藏（${saved.length}）</h2>
+    ${saved.length ? `<div class="rows">${saved.map(row).join('')}</div>` : '<p class="hint" style="color:var(--muted);font-size:14.5px">在知識點頁面按「收藏」，就會出現在這裡。</p>'}
+    <h2 class="section-h">最近看過</h2>
+    ${recent.length ? `<div class="rows">${recent.map(row).join('')}</div>` : '<p style="color:var(--muted);font-size:14.5px">還沒有紀錄。</p>'}`;
+}
+
+function renderSettings(){
+  const s = state.settings;
+  const cats = Object.keys(FIELDS).map(f =>
+    `<button class="chip" data-act="field" data-field="${f}" aria-pressed="${s.fields.includes(f)}">${f}</button>`).join('');
+  const models = state.models.map(m =>
+    `<button class="chip" data-act="model" data-model="${esc(m)}" aria-pressed="${m === modelName()}">${esc(m)}</button>`).join('');
+  return `
+  <section class="group">
+    <h2>Gemini API 金鑰</h2>
+    <p class="hint">到 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> 免費建立。金鑰只存在這台裝置，不會寫進網頁原始碼。</p>
+    <div class="field-row">
+      <input class="input" id="key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="貼上 API 金鑰" value="${esc(s.key)}">
+      <button class="btn sec" data-act="togglekey">顯示</button>
+    </div>
+  </section>
+  <section class="group">
+    <h2>模型</h2>
+    <p class="hint">免費額度目前只涵蓋 Flash 系列。若出現找不到模型的錯誤，按「檢查可用模型」從清單中挑一個。</p>
+    <div class="field-row">
+      <input class="input" id="model" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(s.model)}">
+      <button class="btn sec" data-act="models">檢查可用模型</button>
+    </div>
+    ${models ? `<div class="models">${models}</div>` : ''}
+  </section>
+  <section class="group">
+    <h2>內容深度</h2>
+    <p class="hint">這是所有領域的預設程度。在卡片上按笑臉會讓該領域下次更難，按哭臉則更簡單。</p>
+    <div class="seg">${LEVELS.map(l => `<button data-act="level" data-level="${l}" aria-pressed="${s.level === l}">${l}</button>`).join('')}</div>
+    ${Object.keys(state.bias).filter(k => FIELDS[k]).length ? `<p class="biaslist">已個別調整：${Object.keys(state.bias).filter(k => FIELDS[k]).map(k => `${esc(k)} ${levelFor(k)}`).join('、')}
+      <button class="btn sm sec" data-act="biasresetall" style="margin-left:6px">全部恢復預設</button></p>` : ''}
+  </section>
+  <section class="group">
+    <h2>領域</h2>
+    <p class="hint">${s.fields.length ? `只從選取的 ${s.fields.length} 個領域中隨機挑選。` : '目前從所有領域隨機挑選；點選可以縮小範圍。'}</p>
+    <div class="chips">${cats}</div>
+  </section>
+  <section class="group">
+    <h2>Google Drive 同步</h2>
+    <p class="hint">備份會存在你 Google Drive 的隱藏應用程式資料夾，只有這個網頁讀得到，不會出現在你的檔案列表裡。手機和電腦連結同一個 Google 帳號，就能互相同步。</p>
+    <label class="lab" for="gclient">OAuth 用戶端 ID</label>
+    <input class="input" id="gclient" style="width:100%" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="xxxxxxxx.apps.googleusercontent.com" value="${esc(state.drive.clientId)}">
+    ${!state.drive.clientId ? '' : !rt.client ? '<p class="syncstat" style="color:var(--muted)">Google 登入元件載入中；若一直沒有出現按鈕，請確認網路連線後重新整理。</p>' : state.drive.connected ? `
+      <p class="syncstat">${rt.busy ? '正在同步…' : `上次同步：${state.drive.lastSync ? fmtDateTime(state.drive.lastSync) : '尚未同步'}`}</p>
+      <div class="btnrow">
+        <button class="btn" data-act="drivesync" ${rt.busy ? 'disabled' : ''}>立即同步</button>
+        <button class="btn sec" data-act="drivedisconnect">中斷連結</button>
+      </div>
+      <label class="check"><input type="checkbox" id="driveauto" ${state.drive.auto ? 'checked' : ''}>自動同步：登入期間的變更會自動上傳，超過一天沒同步時會提醒你</label>` : `
+      <div class="btnrow" style="margin-top:12px"><button class="btn" data-act="drivesync" ${rt.busy ? 'disabled' : ''}>${rt.busy ? '正在同步…' : '連結 Google Drive 並同步'}</button></div>`}
+  </section>
+  <section class="group">
+    <h2>資料備份</h2>
+    <p class="hint">也可以手動匯出成檔案；匯入時會和現有資料合併，不會覆蓋。目前共 ${Object.keys(state.cards).length} 張卡片。</p>
+    <div class="btnrow">
+      <button class="btn sec" data-act="export">匯出備份</button>
+      <button class="btn sec" data-act="import">匯入備份</button>
+      <button class="btn sec" data-act="clear" style="color:var(--warn)">清除所有卡片</button>
+    </div>
+  </section>`;
+}
+
+// ---------- knowledge map ----------
+const rad = d => d === 0 ? 0 : d === 1 ? 140 : 420 + (d - 2) * 150;
+const catOf = c => FIELDS[c.cat] ? c.cat : '未分類';
+
+function buildTree(){
+  const cards = Object.values(state.cards).sort((a, b) => a.createdAt - b.createdAt);
+  const root = { type:'root', name:'知識', children:[] };
+  const catNodes = {}, subNodes = {}, cardNodes = {};
+  const cats = Object.keys(FIELDS);
+  if (cards.some(c => catOf(c) === '未分類')) cats.push('未分類');
+  cats.forEach((cat, i) => {
+    const cn = { type:'cat', name:cat, cat, hue: Math.round(i * 360 / 16), sat: FIELDS[cat] ? '45%' : '0%', children:[] };
+    catNodes[cat] = cn; root.children.push(cn);
+    (FIELDS[cat] || []).forEach(sub => {
+      const sn = { type:'sub', name:sub, cat, sub, children:[] };
+      subNodes[cat + '|' + sub] = sn; cn.children.push(sn);
+    });
+  });
+  for (const c of cards) cardNodes[c.id] = { type:'card', id:c.id, name:c.title, saved: state.saved.includes(c.id), children:[] };
+  for (const c of cards){
+    const n = cardNodes[c.id];
+    const parent = c.parentId && c.parentId !== c.id && cardNodes[c.parentId];
+    if (parent){ parent.children.push(n); continue; }
+    const cat = catOf(c);
+    (subNodes[cat + '|' + c.sub] || catNodes[cat]).children.push(n);
+  }
+  return root;
+}
+
+function renderTree(){
+  const cards = Object.values(state.cards);
+  const total = Object.values(FIELDS).reduce((s, a) => s + a.length, 0);
+  const touched = new Set(cards.filter(c => FIELDS[c.cat] && c.sub).map(c => c.cat + '|' + c.sub)).size;
+  const stat = cards.length ? `已學 ${cards.length} 個知識點，觸及 ${touched}／${total} 個子領域` : '還沒有學過任何知識點，點一個子領域開始';
+  return `<div id="map" class="map"></div>
+    <div class="mapbar"><span class="stat">${stat}</span><button class="btn sm sec" data-act="mapreset">回到中心</button></div>`;
+}
+
+function drawMap(){
+  const host = $('#map');
+  if (!host) return;
+  if (!window.d3){ host.innerHTML = '<p class="maperr">地圖元件沒有載入，請確認網路連線後重新整理頁面。</p>'; return; }
+  const w = host.clientWidth, h = host.clientHeight;
+  const root = d3.hierarchy(buildTree(), d => d.children && d.children.length ? d.children : null);
+  d3.tree().size([2 * Math.PI, 1]).separation((a, b) => (a.parent === b.parent ? 1 : 2) / Math.max(1, a.depth))(root);
+  root.each(d => { d.y = rad(d.depth); });
+  root.eachAfter(d => { d.cards = (d.data.type === 'card' ? 1 : 0) + (d.children || []).reduce((s, c) => s + c.cards, 0); });
+  const tone = d => {
+    const a = d.depth === 0 ? null : d.ancestors().find(x => x.depth === 1);
+    return a ? `--h:${a.data.hue};--s:${a.data.sat}` : '--h:200;--s:40%';
+  };
+  const deg = d => d.x * 180 / Math.PI - 90;
+
+  const svg = d3.select(host).append('svg')
+    .attr('class', 'mapsvg').attr('width', w).attr('height', h)
+    .attr('role', 'img').attr('aria-label', '知識樹地圖');
+  const g = svg.append('g');
+  g.append('g').selectAll('circle').data(d3.range(1, root.height + 1)).join('circle')
+    .attr('class', 'ring').attr('r', rad);
+  g.append('g').selectAll('path').data(root.links()).join('path')
+    .attr('class', d => 'link' + (d.target.cards ? '' : ' off'))
+    .attr('style', d => tone(d.target))
+    .attr('d', d3.linkRadial().angle(d => d.x).radius(d => d.y));
+  const node = g.append('g').selectAll('g').data(root.descendants()).join('g')
+    .attr('class', d => `node ${d.data.type}${d.cards || d.depth === 0 ? '' : ' off'}${d.data.saved ? ' saved' : ''}`)
+    .attr('style', tone)
+    .attr('transform', d => `rotate(${deg(d)}) translate(${d.y},0)`)
+    .on('click', (e, d) => { e.stopPropagation(); onNode(d); });
+  node.append('circle').attr('class', 'hit').attr('r', d => d.depth === 0 ? 44 : 14);
+  node.append('circle').attr('class', 'dot')
+    .attr('r', d => ({ root:40, cat:7, sub:4.5, card:4 })[d.data.type] + (d.data.saved ? 1 : 0));
+  node.append('text')
+    .attr('dy', '0.34em')
+    .attr('x', d => d.depth === 0 ? 0 : (d.x < Math.PI ? 1 : -1) * ({ cat:12, sub:9, card:8 })[d.data.type])
+    .attr('text-anchor', d => d.depth === 0 ? 'middle' : d.x < Math.PI ? 'start' : 'end')
+    .attr('transform', d => d.depth === 0 ? `rotate(${-deg(d)})` : d.x >= Math.PI ? 'rotate(180)' : null)
+    .text(d => d.data.type === 'card' && d.data.name.length > 14 ? d.data.name.slice(0, 13) + '…' : d.data.name);
+
+  const zoom = d3.zoom().scaleExtent([0.2, 5]).on('zoom', e => {
+    const k = e.transform.k;
+    g.attr('transform', e.transform);
+    svg.style('--fs', 1 / Math.min(1, Math.max(k, 0.45)));
+    svg.classed('far', k < 0.8);
+    state.mapT = { x: e.transform.x, y: e.transform.y, k };
+  });
+  svg.call(zoom).on('dblclick.zoom', null);
+  svg.on('click', () => { if (state.sheet){ state.sheet = null; renderSheet(); } });
+  const k0 = Math.max(0.25, Math.min(1.2, Math.min(w, h) / (2 * (rad(2) + 130))));
+  const t = state.mapT
+    ? d3.zoomIdentity.translate(state.mapT.x, state.mapT.y).scale(state.mapT.k)
+    : d3.zoomIdentity.translate(w / 2, h / 2).scale(k0);
+  svg.call(zoom.transform, t);
+}
+
+function onNode(d){
+  const t = d.data.type;
+  if (t === 'root'){ state.mapT = null; state.sheet = null; render(); return; }
+  if (t === 'card'){
+    state.path = lineage(d.data.id); state.view = 'explore'; state.sheet = null;
+    persist(); render(); window.scrollTo(0, 0); return;
+  }
+  state.sheet = t === 'cat' ? { type:'cat', cat:d.data.cat } : { type:'sub', cat:d.data.cat, sub:d.data.sub };
+  renderSheet();
+}
+
+function renderSheet(){
+  const el = $('#sheet');
+  const sh = state.sheet;
+  if (state.view !== 'tree' || !sh){ el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  const cards = Object.values(state.cards).filter(c => catOf(c) === sh.cat);
+  const cardRow = c => `<button class="row" data-act="openpath" data-id="${c.id}">
+      <div class="r1"><span class="t serif">${esc(c.title)}</span>${c.kind === 'term' ? '<span class="s">延伸名詞</span>' : ''}${c.doubt ? '<span class="s" style="color:var(--warn)">存疑</span>' : ''}</div>
+      <div class="b">${fmtDate(c.createdAt)}</div></button>`;
+  let head, sub, go = '', rows;
+  if (sh.type === 'sub'){
+    const list = cards.filter(c => c.sub === sh.sub).sort((a, b) => b.createdAt - a.createdAt);
+    head = sh.sub;
+    sub = `${sh.cat}，已學 ${list.length} 個知識點，目前難度：${levelFor(sh.cat)}`;
+    go = `<button class="btn go" data-act="branch" data-cat="${esc(sh.cat)}" data-sub="${esc(sh.sub)}">在這個分支學一個新的</button>`;
+    rows = list.map(cardRow).join('');
+  } else if (!FIELDS[sh.cat]){
+    head = sh.cat; sub = `${cards.length} 個無法判斷領域的舊卡片`;
+    rows = cards.sort((a, b) => b.createdAt - a.createdAt).map(cardRow).join('');
+  } else {
+    const subs = FIELDS[sh.cat];
+    const count = s => cards.filter(c => c.sub === s).length;
+    head = sh.cat;
+    sub = `已學 ${cards.length} 個知識點，觸及 ${subs.filter(count).length}／${subs.length} 個子領域`;
+    const bias = state.bias[sh.cat] || 0;
+    go = `<div class="lvline"><span>目前難度：<b>${levelFor(sh.cat)}</b>${bias ? `（預設 ${LEVELS[baseIdx()]}）` : ''}</span>${bias ? `<button data-act="biasreset" data-cat="${esc(sh.cat)}">恢復預設</button>` : ''}</div>
+      <button class="btn go" data-act="branch" data-cat="${esc(sh.cat)}" data-sub="">從這個領域隨機學一個</button>`;
+    rows = subs.map(s => `<button class="row" data-act="sheetsub" data-cat="${esc(sh.cat)}" data-sub="${esc(s)}">
+      <div class="r1"><span class="t">${esc(s)}</span><span class="s">${count(s) ? `已學 ${count(s)} 個` : '尚未探索'}</span></div></button>`).join('');
+  }
+  el.innerHTML = `<div class="sheet-in">
+    <div class="sheet-h"><div><h3>${esc(head)}</h3><p class="sub">${sub}</p></div>
+    <button class="x" data-act="sheetclose">關閉</button></div>
+    ${go}${rows ? `<div class="rows">${rows}</div>` : ''}</div>`;
+}
+
+function renderActions(){
+  const bar = $('#actions');
+  if (state.view !== 'explore' || !state.settings.key.trim()){ bar.hidden = true; return; }
+  bar.hidden = false;
+  const c = current();
+  const isSaved = c && state.saved.includes(c.id);
+  bar.innerHTML = `<div class="actions-in">
+    <button class="btn" data-act="new" ${state.loading ? 'disabled' : ''}>${c ? '換一個<span class="opt">知識點</span>' : '取得知識點'}</button>
+    ${c ? `<button class="btn sec" data-act="save" aria-pressed="${!!isSaved}">${isSaved ? '已收藏' : '收藏'}</button>
+    <button class="btn sec warnon" data-act="doubt" aria-pressed="${!!c.doubt}">存疑</button>
+    <button class="btn sec icon" data-act="vote" data-dir="1" aria-pressed="${c.vote === 1}" ${FIELDS[c.cat] ? '' : 'disabled'} aria-label="太簡單，下次${esc(c.cat)}更難" title="太簡單，下次更難">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><circle class="eye" cx="9" cy="10" r="1.1"/><circle class="eye" cx="15" cy="10" r="1.1"/><path d="M8.2 14.2q3.8 3.6 7.6 0"/></svg></button>
+    <button class="btn sec icon" data-act="vote" data-dir="-1" aria-pressed="${c.vote === -1}" ${FIELDS[c.cat] ? '' : 'disabled'} aria-label="太難，下次${esc(c.cat)}更簡單" title="太難，下次更簡單">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><circle class="eye" cx="9" cy="10" r="1.1"/><circle class="eye" cx="15" cy="10" r="1.1"/><path d="M8.2 16.6q3.8 -3.4 7.6 0"/></svg></button>` : ''}
+  </div>`;
+}
+
+function render(){
+  renderNav();
+  const main = $('#main');
+  const tree = state.view === 'tree';
+  if (!tree) state.sheet = null;
+  document.documentElement.style.setProperty('--hh', $('.bar').offsetHeight + 'px');
+  document.body.classList.toggle('maponly', tree);
+  main.className = tree ? 'mapwrap' : 'wrap';
+  main.innerHTML = tree ? renderTree() : state.view === 'library' ? renderLibrary() : state.view === 'settings' ? renderSettings() : renderExplore();
+  renderActions();
+  renderSheet();
+  if (tree){ drawMap(); return; }
+  if (window.MathJax && MathJax.typesetPromise){
+    MathJax.typesetClear && MathJax.typesetClear([main]);
+    MathJax.typesetPromise([main]).catch(() => {});
+  }
+}
+
+// ---------- events ----------
+document.addEventListener('click', e => {
+  if (e.target.id === 'askwrap'){ closeAsk(); return; }
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.dataset.act;
+  const c = current();
+  switch (act){
+    case 'view': state.view = el.dataset.view; render(); window.scrollTo(0, 0); break;
+    case 'new': newPoint(); break;
+    case 'term': openTerm(el.dataset.term, el.dataset.en || (c?.terms.find(t => t.term === el.dataset.term)?.english) || ''); break;
+    case 'trail': goTo(el.dataset.id); break;
+    case 'open': case 'openpath':
+      state.path = lineage(el.dataset.id); state.view = 'explore'; state.sheet = null;
+      persist(); render(); window.scrollTo(0, 0); break;
+    case 'branch':
+      state.sheet = null;
+      if (!state.settings.key.trim()){ state.view = 'settings'; render(); toast('請先設定 API 金鑰'); break; }
+      state.view = 'explore'; render(); window.scrollTo(0, 0);
+      newPoint({ cat: el.dataset.cat, sub: el.dataset.sub || null }); break;
+    case 'sheetsub': state.sheet = { type:'sub', cat:el.dataset.cat, sub:el.dataset.sub }; renderSheet(); break;
+    case 'sheetclose': state.sheet = null; renderSheet(); break;
+    case 'mapreset': state.mapT = null; render(); break;
+    case 'regen': regen(c); break;
+    case 'vote': vote(c, Number(el.dataset.dir)); break;
+    case 'drivesync': withToken(() => driveSync(false)); break;
+    case 'drivedismiss': rt.dismissed = true; render(); break;
+    case 'drivedisconnect':
+      if (!confirm('要中斷與 Google Drive 的連結嗎？雲端上的備份會保留，之後重新連結即可繼續同步。')) break;
+      if (rt.token && window.google) google.accounts.oauth2.revoke(rt.token, () => {});
+      rt.token = null; state.drive.connected = false; state.drive.lastSync = 0; saveDrive();
+      render(); toast('已中斷連結'); break;
+    case 'biasreset':
+      delete state.bias[el.dataset.cat]; state.biasAt = Date.now();
+      persist(); renderSheet(); toast(`${el.dataset.cat}已恢復預設難度`); break;
+    case 'biasresetall': state.bias = {}; state.biasAt = Date.now(); persist(); render(); toast('已全部恢復預設難度'); break;
+    case 'ask': openAsk(); break;
+    case 'askclose': closeAsk(); break;
+    case 'asksend': askSend(); break;
+    case 'askretry': state.ask.error = ''; askCall(); break;
+    case 'askcancel': state.ask.controller?.abort(); break;
+    case 'askclear':
+      state.ask.controller?.abort();
+      state.ask.msgs = []; state.ask.error = ''; updateAsk(); break;
+    case 'retry': if (state.retry) state.retry(); break;
+    case 'dismiss': state.error = ''; render(); break;
+    case 'cancel': state.controller?.abort(); break;
+    case 'save':
+      if (!c) break;
+      if (state.saved.includes(c.id)){ state.saved = state.saved.filter(x => x !== c.id); state.savedLog[c.id] = { on:false, t:Date.now() }; toast('已取消收藏'); }
+      else { state.saved.push(c.id); state.savedLog[c.id] = { on:true, t:Date.now() }; toast('已收藏'); }
+      persist(); render(); break;
+    case 'doubt':
+      if (!c) break;
+      c.doubt = !c.doubt; c.updatedAt = Date.now(); toast(c.doubt ? '已標記存疑' : '已取消存疑');
+      persist(); render(); break;
+    case 'togglekey': {
+      const k = $('#key'); const show = k.type === 'password';
+      k.type = show ? 'text' : 'password'; el.textContent = show ? '隱藏' : '顯示'; break;
+    }
+    case 'models': checkModels(); break;
+    case 'model': state.settings.model = el.dataset.model; saveSettings(); render(); toast('已切換模型'); break;
+    case 'level': state.settings.level = el.dataset.level; saveSettings(); render(); break;
+    case 'field': {
+      const f = el.dataset.field, fs = state.settings.fields;
+      state.settings.fields = fs.includes(f) ? fs.filter(x => x !== f) : [...fs, f];
+      saveSettings(); render(); break;
+    }
+    case 'export': {
+      const blob = new Blob([JSON.stringify(snapshot())], { type:'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `knowledge-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      toast('已匯出備份'); break;
+    }
+    case 'import': $('#importFile').click(); break;
+    case 'clear':
+      if (!confirm(state.drive.connected
+        ? '確定要清除這台裝置上的所有卡片、收藏與紀錄嗎？注意：Google Drive 上的備份不會被刪除，下次同步時會再合併回來。'
+        : '確定要清除所有卡片、收藏與紀錄嗎？API 金鑰與設定會保留。')) break;
+      state.cards = {}; state.saved = []; state.seen = []; state.termIndex = {}; state.path = [];
+      persist(); render(); toast('已清除'); break;
+  }
+});
+
+document.addEventListener('input', e => {
+  if (e.target.id === 'askinput'){
+    state.ask.draft = e.target.value;
+    e.target.style.height = 'auto';
+    e.target.style.height = Math.min(150, e.target.scrollHeight + 2) + 'px';
+    return;
+  }
+  if (e.target.id === 'key'){ state.settings.key = e.target.value; saveSettings(); renderActions(); }
+  if (e.target.id === 'model'){ state.settings.model = e.target.value; saveSettings(); }
+});
+
+$('#importFile').addEventListener('change', async e => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  try{
+    const { added } = mergeBackup(JSON.parse(await file.text()));
+    render(); toast(`已匯入，新增 ${added} 張卡片`);
+  }catch{ toast('這不是有效的備份檔。'); }
+});
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'gclient'){ state.drive.clientId = e.target.value.trim(); saveDrive(); initGis(); render(); }
+  if (e.target.id === 'driveauto'){ state.drive.auto = e.target.checked; saveDrive(); }
+  if (e.target.id === 'askctxbox') state.ask.useCtx = e.target.checked;
+});
+document.addEventListener('keydown', e => {
+  if (!state.ask.open) return;
+  if (e.key === 'Escape') closeAsk();
+  if (e.target.id === 'askinput' && e.key === 'Enter' && (e.metaKey || e.ctrlKey)){ e.preventDefault(); askSend(); }
+});
+
+if (window.google && google.accounts && google.accounts.oauth2) initGis();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && rt.timer && tokenValid()){ clearTimeout(rt.timer); driveSync(true); }
+});
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { if (state.view === 'tree') render(); }, 200);
+});
+
+render();
+})();
+</script>
+</body>
+</html>
