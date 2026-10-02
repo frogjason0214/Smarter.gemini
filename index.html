@@ -351,7 +351,7 @@ const store = {
 
 const state = {
   view: 'explore',
-  settings: Object.assign({ key:'', model:DEFAULT_MODEL, level:'大學', fields:[], theme:'auto' }, store.get('kx_settings', {})),
+  settings: Object.assign({ key:'', model:DEFAULT_MODEL, level:'碩士', fields:[], theme:'auto' }, store.get('kx_settings', {})),
   cards: store.get('kx_cards', {}),
   saved: store.get('kx_saved', []),
   seen: store.get('kx_seen', []),
@@ -755,19 +755,39 @@ async function geminiSmart(payload, signal, onStatus, chain = fallbackChain(), s
   throw lastErr;
 }
 
-async function callGemini(userText, signal, onStatus, level){
-  const strong = STRONG_LEVELS.includes(level);
-  const text = await geminiSmart({
-    systemInstruction:{ parts:[{ text:SYSTEM }] },
-    contents:[{ role:'user', parts:[{ text:userText }] }],
-    generationConfig:{ responseMimeType:'application/json', temperature:0.4 }
-  }, signal, onStatus, fallbackChain(level), strong);
+// 數學內容常讓模型寫出未正確跳脫的反斜線（例如 \frac、\alpha），導致 JSON 解析失敗或公式被誤判成控制字元。
+// 解析前先修補：LaTeX 指令與不合法的跳脫一律補成雙反斜線；已正確跳脫的不會重複處理。
+function repairJSON(t){
+  return t
+    .replace(/(?<!\\)\\(?!u[0-9a-fA-F]{4})(?=[a-zA-Z]{2,})/g, '\\\\')
+    .replace(/(?<!\\)\\(?!["\\/bfnrtu])/g, '\\\\');
+}
+function parseCard(text){
   const clean = text.replace(/```json|```/g, '').trim();
   const a = clean.indexOf('{'), b = clean.lastIndexOf('}');
-  let obj;
-  try{ obj = JSON.parse(clean.slice(a, b + 1)); }catch{ throw new Error('回傳內容格式有誤，請再試一次。'); }
-  if (!obj.title || !obj.body) throw new Error('回傳內容不完整，請再試一次。');
-  return obj;
+  if (a < 0 || b <= a) return null;
+  const raw = clean.slice(a, b + 1);
+  for (const candidate of [repairJSON(raw), raw]){
+    try{ return JSON.parse(candidate); }catch{}
+  }
+  console.warn('[知識探索] 無法解析的回傳內容：', text);
+  return null;
+}
+
+async function callGemini(userText, signal, onStatus, level){
+  const strong = STRONG_LEVELS.includes(level);
+  // 格式錯誤時自動再請模型重寫一次
+  for (let attempt = 0; attempt < 2; attempt++){
+    const text = await geminiSmart({
+      systemInstruction:{ parts:[{ text:SYSTEM }] },
+      contents:[{ role:'user', parts:[{ text:userText }] }],
+      generationConfig:{ responseMimeType:'application/json', temperature:0.4 }
+    }, signal, onStatus, fallbackChain(level), strong);
+    const obj = parseCard(text);
+    if (obj && obj.title && obj.body) return obj;
+    if (attempt === 0 && onStatus) onStatus('回傳格式有誤，正在請模型重新撰寫…');
+  }
+  throw new Error('模型連續兩次回傳的格式都有誤，請再試一次。若同一個名詞一直失敗，可能是來源中的數學式較複雜。');
 }
 
 // task(signal, status) 是一連串步驟：查來源、再請 Gemini 撰寫
@@ -837,6 +857,8 @@ async function wikiArticle(title, signal, badge){
   const page = Object.values(data.query?.pages || {})[0];
   if (!page || page.missing !== undefined || !page.extract) return null;
   let text = page.extract.split(/\n==+\s*(See also|References|Notes|Further reading|External links|Bibliography|Sources|Citations|Footnotes)\s*==+/i)[0];
+  // 維基百科純文字中的數學式會以 {\displaystyle ...} 呈現，先轉成 $...$，減少模型處理反斜線出錯
+  for (let i = 0; i < 3; i++) text = text.replace(/\{\\displaystyle\s*((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)\}/g, (m, x) => '$' + x.trim() + '$');
   text = text.replace(/\n{3,}/g, '\n\n').trim().slice(0, 12000);
   if (text.length < 600) return null;
   const name = page.title;
