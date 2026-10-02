@@ -996,7 +996,20 @@ async function newPoint(opts = {}){
     return { obj, src };
   }, `正在從「${sub}」挑選知識點`, () => newPoint(opts));
   if (!r) return;
-  const card = normalize(r.obj, Object.assign({ kind:'point', parentId:null, cat, sub, level:lv }, sourcedExtra(r.src, mode)));
+  
+  // ✅ 驗證並修正分類
+  let obj = r.obj;
+  const [returnedCat, returnedSub] = (obj.field || '').split('／');
+  
+  if (!FIELDS[returnedCat] || !FIELDS[returnedCat].includes(returnedSub)) {
+    // Gemini 填錯了，用我們決定的分類覆蓋
+    obj.field = `${cat}／${sub}`;
+    obj.cat = cat;
+    obj.sub = sub;
+    toast(`分類已校正為「${cat}／${sub}」`);
+  }
+  
+  const card = normalize(obj, Object.assign({ kind:'point', parentId:null, cat, sub, level:lv }, sourcedExtra(r.src, mode)));
   addCard(card);
   state.seen.push(card.title);
   state.path = [card.id];
