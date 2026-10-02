@@ -683,19 +683,27 @@ async function geminiRequest(payload, signal, model = modelName()){
 // 伺服器忙碌（5xx）時先重試，仍失敗或額度用完（429）就依序改用其他模型
 const RETRYABLE = new Set([500, 502, 503, 504]);
 const modelLabel = id => (MODELS.find(m => m.id === id)?.name || id).replace('Gemini ', '');
-function fallbackChain(){
-  const first = modelName();
-  if (state.settings.autoFallback === false) return [first];
-  const rest = first === 'gemini-3.5-flash-lite' ? ['gemini-3.5-flash'] : ['gemini-3.7-flash', 'gemini-3.5-flash-lite'];
-  return [first, ...rest.filter(m => m !== first)];
+// ---------- 模型選擇與重試 ----------
+const STRONG_LEVELS = ['博士', '專家'];
+const STRONG_MODELS = ['gemini-3.8-flash', 'gemini-3.7-flash'];
+function fallbackChain(level){
+  const sel = modelName();
+  if (STRONG_LEVELS.includes(level)){
+    // 博士以上：只用 3.7 Flash 以上，絕不降級
+    const first = STRONG_MODELS.includes(sel) ? sel : STRONG_MODELS[0];
+    if (state.settings.autoFallback === false) return [first];
+    return [first, ...STRONG_MODELS.filter(m => m !== first)];
+  }
+  if (state.settings.autoFallback === false) return [sel];
+  const rest = sel === 'gemini-3.5-flash-lite' ? ['gemini-3.5-flash'] : ['gemini-3.7-flash', 'gemini-3.5-flash-lite'];
+  return [sel, ...rest.filter(m => m !== sel)];
 }
 const sleep = (ms, signal) => new Promise((resolve, reject) => {
   const t = setTimeout(resolve, ms);
   if (signal) signal.addEventListener('abort', () => { clearTimeout(t); reject(new DOMException('aborted', 'AbortError')); }, { once:true });
 });
 
-async function geminiSmart(payload, signal, onStatus){
-  const chain = fallbackChain();
+async function geminiSmart(payload, signal, onStatus, chain = fallbackChain(), strong = false){
   let lastErr;
   for (let i = 0; i < chain.length; i++){
     const model = chain[i];
@@ -720,6 +728,9 @@ async function geminiSmart(payload, signal, onStatus){
     if (!canFallback || i === chain.length - 1) break;
     if (onStatus) onStatus(`改用 ${modelLabel(chain[i + 1])}…`);
   }
+  if (strong && lastErr && (RETRYABLE.has(lastErr.status) || lastErr.status === 429)){
+    throw new Error('3.8 Flash 與 3.7 Flash 目前都無法使用（伺服器忙碌或今日額度已用完）。博士以上的內容只會由 3.7 Flash 以上的模型撰寫，請稍後再試，或用哭臉暫時調降這個領域的難度。');
+  }
   if (lastErr && RETRYABLE.has(lastErr.status)){
     throw new Error(chain.length > 1
       ? 'Gemini 伺服器目前忙碌，已自動重試並改用其他模型，仍然無法完成，請稍後再試。'
@@ -728,12 +739,13 @@ async function geminiSmart(payload, signal, onStatus){
   throw lastErr;
 }
 
-async function callGemini(userText, signal){
+async function callGemini(userText, signal, onStatus, level){
+  const strong = STRONG_LEVELS.includes(level);
   const text = await geminiSmart({
     systemInstruction:{ parts:[{ text:SYSTEM }] },
     contents:[{ role:'user', parts:[{ text:userText }] }],
-    generationConfig:{ responseMimeType:'application/json', temperature:1 }
-  }, signal, msg => { state.loadingText = msg; render(); });
+    generationConfig:{ responseMimeType:'application/json', temperature:0.4 }
+  }, signal, onStatus, fallbackChain(level), strong);
   const clean = text.replace(/```json|```/g, '').trim();
   const a = clean.indexOf('{'), b = clean.lastIndexOf('}');
   let obj;
@@ -742,15 +754,17 @@ async function callGemini(userText, signal){
   return obj;
 }
 
-async function run(userText, loadingText, retry){
+// task(signal, status) 是一連串步驟：查來源、再請 Gemini 撰寫
+async function run(task, loadingText, retry){
   if (state.loading) return null;
   state.loading = true; state.loadingText = loadingText; state.error = ''; state.retry = retry;
   state.controller = new AbortController();
   render();
+  const status = msg => { state.loadingText = msg; render(); };
   try{
-    const raw = await callGemini(userText, state.controller.signal);
+    const r = await task(state.controller.signal, status);
     state.loading = false; state.controller = null;
-    return raw;
+    return r;
   }catch(e){
     state.loading = false; state.controller = null;
     state.error = e.name === 'AbortError' ? '' : e.message;
@@ -759,28 +773,212 @@ async function run(userText, loadingText, retry){
   }
 }
 
+// ---------- 可信來源：英文維基百科、OpenAlex ----------
+// 程度決定來源：高中、大學部 → 維基百科；碩士 → 高被引代表論文；博士以上 → 近三年高被引論文
+const modeFor = lv => (lv === '高中' || lv === '大學部') ? 'wiki' : lv === '碩士' ? 'classic' : 'recent';
+const MODE_LABEL = { wiki:'依據英文維基百科', classic:'依據高被引代表論文', recent:'依據近三年論文' };
+const SUB_EN = {
+  '數論':'Number theory','拓樸學':'Topology','抽象代數':'Abstract algebra','實分析':'Real analysis','組合數學':'Combinatorics','機率論':'Probability theory','數理邏輯':'Mathematical logic','微分幾何':'Differential geometry',
+  '量子力學':'Quantum mechanics','統計力學':'Statistical mechanics','凝態物理':'Condensed matter physics','粒子物理':'Particle physics','廣義相對論':'General relativity','光學':'Optics','流體力學':'Fluid dynamics',
+  '物理化學':'Physical chemistry','有機化學':'Organic chemistry','無機化學':'Inorganic chemistry','量子化學':'Quantum chemistry','電化學':'Electrochemistry','高分子化學':'Polymer chemistry',
+  '分子生物學':'Molecular biology','演化生物學':'Evolutionary biology','生態學':'Ecology','遺傳學':'Genetics','細胞生物學':'Cell biology','植物生理學':'Plant physiology',
+  '免疫學':'Immunology','藥理學':'Pharmacology','流行病學':'Epidemiology','神經科學':'Neuroscience','病理學':'Pathology','內分泌學':'Endocrinology',
+  '地質學':'Geology','大氣科學':'Atmospheric science','海洋學':'Oceanography','行星科學':'Planetary science','天文物理':'Astrophysics','宇宙學':'Cosmology',
+  '控制理論':'Control theory','材料科學':'Materials science','結構力學':'Structural mechanics','訊號處理':'Signal processing','熱傳學':'Heat transfer','電力系統':'Electric power system',
+  '演算法':'Algorithm','計算理論':'Theory of computation','密碼學':'Cryptography','分散式系統':'Distributed computing','資訊理論':'Information theory','編譯器':'Compiler','機器學習理論':'Computational learning theory',
+  '數理統計':'Mathematical statistics','貝氏統計':'Bayesian statistics','因果推論':'Causal inference','實驗設計':'Design of experiments','時間序列分析':'Time series analysis',
+  '個體經濟學':'Microeconomics','賽局理論':'Game theory','機制設計':'Mechanism design','總體經濟學':'Macroeconomics','計量經濟學':'Econometrics','資產定價':'Asset pricing',
+  '社會學':'Sociology','政治學':'Political science','人類學':'Anthropology','社會網絡分析':'Social network analysis',
+  '認知心理學':'Cognitive psychology','心理計量學':'Psychometrics','知覺心理學':'Perception psychology','行為決策':'Behavioral decision making',
+  '音韻學':'Phonology','句法學':'Syntax linguistics','語意學':'Semantics linguistics','歷史語言學':'Historical linguistics','語用學':'Pragmatics',
+  '形式邏輯':'Formal logic','知識論':'Epistemology','心靈哲學':'Philosophy of mind','科學哲學':'Philosophy of science','決策理論':'Decision theory',
+  '考古學方法':'Archaeological science','科學史':'History of science','經濟史':'Economic history','古文字學':'Palaeography',
+  '音樂理論':'Music theory','聲學':'Acoustics','色彩科學':'Color science','建築史':'History of architecture'
+};
+const WIKI_API = 'https://en.wikipedia.org/w/api.php';
+const OA_API = 'https://api.openalex.org';
+const OA_MAIL = 'knowledge-explorer@users.noreply.github.com';
+
+async function getJSON(url, signal, label){
+  let res;
+  try{ res = await fetch(url, { signal }); }
+  catch(e){ if (e.name === 'AbortError') throw e; throw new Error(`無法連線到${label}，請確認網路連線後再試一次。`); }
+  if (!res.ok) throw new Error(`${label}暫時無法使用（${res.status}），請稍後再試。`);
+  return res.json();
+}
+const shuffle = a => { const b = [...a]; for (let i = b.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+const seenKeys = () => new Set(Object.values(state.cards).map(c => c.srcKey).filter(Boolean));
+const stripTags = s => String(s || '').replace(/<[^>]+>/g, '');
+
+async function wikiSearch(q, limit, signal){
+  const url = `${WIKI_API}?action=query&list=search&format=json&origin=*&srnamespace=0&srlimit=${limit}&srsearch=${encodeURIComponent(q)}`;
+  const data = await getJSON(url, signal, '維基百科');
+  return (data.query?.search || []).map(r => r.title).filter(t => !/^(List|Lists|Outline|Index|Glossary|Timeline) of /i.test(t));
+}
+async function wikiArticle(title, signal, badge){
+  const url = `${WIKI_API}?action=query&prop=extracts|info&explaintext=1&exsectionformat=wiki&inprop=url&redirects=1&format=json&origin=*&titles=${encodeURIComponent(title)}`;
+  const data = await getJSON(url, signal, '維基百科');
+  const page = Object.values(data.query?.pages || {})[0];
+  if (!page || page.missing !== undefined || !page.extract) return null;
+  let text = page.extract.split(/\n==+\s*(See also|References|Notes|Further reading|External links|Bibliography|Sources|Citations|Footnotes)\s*==+/i)[0];
+  text = text.replace(/\n{3,}/g, '\n\n').trim().slice(0, 12000);
+  if (text.length < 600) return null;
+  const name = page.title;
+  return { kind:'wiki', key:'wiki:' + name, title:name, text,
+    sources:[{ title:`Wikipedia：${name}`, author: badge || '', year:'', url: page.fullurl || `https://en.wikipedia.org/wiki/${encodeURIComponent(name.replace(/ /g, '_'))}` }] };
+}
+// 隨機挑選：優先選維基百科評定的優良、典範條目
+async function wikiPick(subEn, signal){
+  const seen = seenKeys();
+  let badge = '典範或優良條目';
+  let titles = await wikiSearch(`${subEn} incategory:Featured_articles|Good_articles`, 50, signal);
+  if (titles.filter(t => !seen.has('wiki:' + t)).length < 3){ badge = ''; titles = await wikiSearch(subEn, 50, signal); }
+  for (const t of shuffle(titles.filter(t => !seen.has('wiki:' + t))).slice(0, 4)){
+    const art = await wikiArticle(t, signal, badge);
+    if (art) return art;
+  }
+  throw new Error(`在英文維基百科找不到「${subEn}」適合的新條目，請再按一次換個領域。`);
+}
+async function wikiLookup(term, signal){
+  const titles = await wikiSearch(term, 5, signal);
+  for (const t of titles.slice(0, 2)){
+    const art = await wikiArticle(t, signal, '');
+    if (art) return art;
+  }
+  return null;
+}
+
+function oaAbstract(inv){
+  if (!inv) return '';
+  const words = [];
+  for (const [w, pos] of Object.entries(inv)) for (const p of pos) words[p] = w;
+  return words.filter(Boolean).join(' ');
+}
+function oaToSource(w, kind){
+  const authors = (w.authorships || []).map(a => a.author?.display_name).filter(Boolean);
+  const author = authors.length > 3 ? authors.slice(0, 3).join(', ') + ' et al.' : authors.join(', ');
+  const venue = w.primary_location?.source?.display_name || '';
+  const title = stripTags(w.display_name);
+  return { kind, key:'oa:' + String(w.id).split('/').pop(), title,
+    text: oaAbstract(w.abstract_inverted_index).slice(0, 3500),
+    meta:{ authors: author, year: w.publication_year, venue, cited: w.cited_by_count },
+    sources:[{ title, author, year: String(w.publication_year || ''), venue, cited: w.cited_by_count, url: w.doi || w.id }] };
+}
+async function oaWorks(q, recent, perPage, signal){
+  const since = new Date(Date.now() - 3 * 365 * 864e5).toISOString().slice(0, 10);
+  const filter = ['has_abstract:true', 'type:article|review', recent ? 'cited_by_count:>9' : 'cited_by_count:>200']
+    .concat(recent ? [`from_publication_date:${since}`] : []).join(',');
+  const select = 'id,display_name,publication_year,cited_by_count,doi,abstract_inverted_index,authorships,primary_location';
+  const url = `${OA_API}/works?search=${encodeURIComponent(q)}&filter=${filter}&sort=cited_by_count:desc&per-page=${perPage}&select=${select}&mailto=${OA_MAIL}`;
+  const data = await getJSON(url, signal, 'OpenAlex 學術資料庫');
+  return (data.results || []).filter(w => w.abstract_inverted_index && w.primary_location?.source?.id);
+}
+// 以期刊的「兩年平均被引次數」作為影響係數（IF）的免費替代指標，保留前半段期刊
+async function oaHighImpact(works, signal){
+  const ids = [...new Set(works.map(w => String(w.primary_location.source.id).split('/').pop()))].slice(0, 50);
+  if (!ids.length) return works;
+  const url = `${OA_API}/sources?filter=openalex:${ids.join('|')}&select=id,summary_stats&per-page=50&mailto=${OA_MAIL}`;
+  const data = await getJSON(url, signal, 'OpenAlex 學術資料庫');
+  const m = {};
+  for (const s of data.results || []) m[String(s.id).split('/').pop()] = s.summary_stats?.['2yr_mean_citedness'] || 0;
+  const vals = Object.values(m).sort((a, b) => a - b);
+  const median = vals.length ? vals[Math.floor(vals.length / 2)] : 0;
+  const kept = works.filter(w => (m[String(w.primary_location.source.id).split('/').pop()] || 0) >= median);
+  return kept.length ? kept : works;
+}
+async function paperPick(subEn, recent, signal){
+  const seen = seenKeys();
+  const works = await oaHighImpact(await oaWorks(subEn, recent, 50, signal), signal);
+  const fresh = works.filter(w => !seen.has('oa:' + String(w.id).split('/').pop())).slice(0, 15);
+  if (!fresh.length) throw new Error(`在 OpenAlex 找不到「${subEn}」${recent ? '近三年' : ''}適合的新論文，請再按一次換個領域。`);
+  return oaToSource(pick(fresh), recent ? 'recent' : 'classic');
+}
+async function paperLookup(term, recent, signal){
+  const works = await oaWorks(term, recent, 10, signal);
+  return works.length ? oaToSource(works[0], recent ? 'recent' : 'classic') : null;
+}
+
+function sourcePrompt(src, lv, focus){
+  const head = focus
+    ? `請以專有名詞「${focus.term}」為卡片主題（title 就是「${focus.term}」），說明它的意義${focus.parent ? `，以及它與「${focus.parent}」的關聯` : ''}。`
+    : '';
+  const level = `程度：${lv}（${LEVEL_DESC[lv]}）`;
+  if (src.kind === 'wiki'){
+    return `以下是英文維基百科條目「${src.title}」的內容。請「只根據這段原文」撰寫一張繁體中文知識點卡片。
+${head}
+規則：
+- 原文沒有提到的事實、數字、人名、年份一律不得加入；可以重新組織與簡化，但不得改變原意。
+- 若需要的資訊原文沒有，就略過，不要用自己的知識補上。
+- title 使用這個主題的台灣慣用中文譯名。
+- consensus 說明原文中支持這項知識的依據（例如：已有證明、經實驗確認）。
+- sources 回傳空陣列，網頁會自動附上原始條目。
+${level}
+---原文開始---
+${src.text}
+---原文結束---`;
+  }
+  const m = src.meta;
+  const info = `論文標題：${src.title}\n作者：${m.authors}\n年份：${m.year}\n期刊：${m.venue}\n被引用次數：${m.cited}\n摘要：${src.text}`;
+  if (src.kind === 'classic'){
+    return `以下是一篇在該領域被大量引用、刊登於高影響力期刊的代表性論文。請以它為核心撰寫一張繁體中文知識點卡片：說明它要解決的問題、核心方法或發現，以及對該領域的影響。
+${head}
+規則：
+- 關於這篇論文本身的敘述，必須以下方摘要為依據，不得杜撰摘要中沒有的實驗結果、數據或結論。
+- 可以補充教科書層級、學界公認的背景知識幫助理解，但不要引用其他特定論文的細節。
+- title 使用這篇論文核心概念的繁體中文名稱。
+- consensus 說明這項成果的學術地位（例如被引用次數所反映的影響力，以及是否已成為該領域的標準知識）。
+- sources 回傳空陣列，網頁會自動附上這篇論文。
+${level}
+---論文資訊---
+${info}`;
+  }
+  return `以下是一篇近三年發表、已被大量引用的新論文。你可能沒有讀過它，請完全依據下方摘要撰寫一張繁體中文知識點卡片，分享它的新發現與專精細節。
+${head}
+規則（本次為新文獻介紹，取代系統指示第 2 條）：
+- 只能根據摘要說明這篇論文的主張、方法與結果，不得補充摘要沒有的數據或結論。
+- 必須清楚區分「這篇論文的主張」與「學界已確立的背景知識」；背景知識只能使用教科書層級的內容。
+- title 使用這篇論文核心發現的繁體中文名稱。
+- consensus 改為說明證據程度：例如這是單一研究或綜述、是否仍待其他研究重複驗證。
+- sources 回傳空陣列，網頁會自動附上這篇論文。
+${level}
+---論文資訊---
+${info}`;
+}
+
+async function getSource(mode, query, signal, status, isTerm){
+  if (mode === 'wiki'){
+    status(isTerm ? `正在英文維基百科查詢「${query}」…` : '正在從英文維基百科挑選條目…');
+    return isTerm ? wikiLookup(query, signal) : wikiPick(query, signal);
+  }
+  const recent = mode === 'recent';
+  status(recent ? '正在從 OpenAlex 挑選近三年的高被引論文…' : '正在從 OpenAlex 挑選高被引代表論文…');
+  return isTerm ? paperLookup(query, recent, signal) : paperPick(query, recent, signal);
+}
+
 function pickField(){
   const cats = state.settings.fields.length ? state.settings.fields : Object.keys(FIELDS);
   const cat = pick(cats);
   return { cat, sub: pick(FIELDS[cat]) };
 }
 
+function sourcedExtra(src, mode){
+  return { srcType: mode, srcKey: src.key, sources: src.sources };
+}
+
 async function newPoint(opts = {}){
   const { cat, sub } = opts.cat && FIELDS[opts.cat]
     ? { cat: opts.cat, sub: opts.sub && FIELDS[opts.cat].includes(opts.sub) ? opts.sub : pick(FIELDS[opts.cat]) }
     : pickField();
-  const angle = pick(ANGLES);
   const lv = levelFor(cat);
-  const branch = Object.values(state.cards).filter(c => c.sub === sub).map(c => c.title);
-  const seen = [...new Set([...branch, ...state.seen.slice(-60)])].join('、') || '（無）';
-  const prompt = `請產生一張新的知識點卡片。
-領域：${cat}／${sub}
-切入角度：${angle}
-程度：${lv}（${LEVEL_DESC[lv]}）
-請挑一個不那麼常見、但在該領域內是標準知識的主題，避開以下已看過的主題：${seen}`;
-  const raw = await run(prompt, `正在從「${sub}」挑選知識點`, () => newPoint(opts));
-  if (!raw) return;
-  const card = normalize(raw, { kind:'point', parentId:null, cat, sub, level:lv });
+  const mode = modeFor(lv);
+  const r = await run(async (signal, status) => {
+    const src = await getSource(mode, SUB_EN[sub] || sub, signal, status, false);
+    status(`正在請 ${modelLabel(fallbackChain(lv)[0])} 根據來源撰寫…`);
+    const obj = await callGemini(sourcePrompt(src, lv, null), signal, status, lv);
+    return { obj, src };
+  }, `正在從「${sub}」挑選知識點`, () => newPoint(opts));
+  if (!r) return;
+  const card = normalize(r.obj, Object.assign({ kind:'point', parentId:null, cat, sub, level:lv }, sourcedExtra(r.src, mode)));
   addCard(card);
   state.seen.push(card.title);
   state.path = [card.id];
@@ -792,13 +990,22 @@ async function openTerm(term, english){
   if (existing && state.cards[existing]){ goTo(existing); return; }
   const parent = current();
   const lv = levelFor(parent ? parent.cat : '');
-  const ctx = parent ? `它出現在知識點「${parent.title}」的脈絡中：${plain(parent.body).slice(0, 700)}` : '';
-  const prompt = `請以專有名詞「${term}」${english ? `（${english}）` : ''}為主題，撰寫一張知識點卡片，title 就是「${term}」。
-${ctx}
-請在內文中說明它與上述脈絡的關聯。程度：${lv}（${LEVEL_DESC[lv]}）`;
-  const raw = await run(prompt, `正在展開「${term}」`, () => openTerm(term, english));
-  if (!raw) return;
-  const card = normalize(raw, { kind:'term', parentId: parent ? parent.id : null, cat: parent ? parent.cat : '未分類', sub: parent ? parent.sub : null, level:lv });
+  const mode = modeFor(lv);
+  const query = english || term;
+  const r = await run(async (signal, status) => {
+    const src = await getSource(mode, query, signal, status, true);
+    if (!src){
+      throw new Error(mode === 'wiki'
+        ? `英文維基百科找不到「${term}」的條目。為了確保內容來自可信來源，這個名詞暫時無法展開。`
+        : `OpenAlex 找不到與「${term}」相關、有公開摘要的${mode === 'recent' ? '近三年' : '高被引'}論文。為了確保內容來自可信來源，這個名詞暫時無法展開。`);
+    }
+    status(`正在請 ${modelLabel(fallbackChain(lv)[0])} 根據來源撰寫…`);
+    const obj = await callGemini(sourcePrompt(src, lv, { term, parent: parent ? parent.title : '' }), signal, status, lv);
+    return { obj, src };
+  }, `正在展開「${term}」`, () => openTerm(term, english));
+  if (!r) return;
+  const card = normalize(r.obj, Object.assign({ kind:'term', parentId: parent ? parent.id : null,
+    cat: parent ? parent.cat : '未分類', sub: parent ? parent.sub : null, level:lv }, sourcedExtra(r.src, mode)));
   card.title = term;
   if (english && !card.english) card.english = english;
   addCard(card);
@@ -806,17 +1013,32 @@ ${ctx}
   persist(); render(); window.scrollTo(0, 0);
 }
 
+// 重新產生被精簡的舊卡片：有來源紀錄的，回到同一個來源重新摘要
 async function regen(c){
   if (!c) return;
+  const lv = c.level || levelFor(c.cat);
   const parent = state.cards[c.parentId];
-  const ctx = parent ? `它屬於「${parent.title}」的延伸主題。` : '';
-  const prompt = `請以「${c.title}」${c.english ? `（${c.english}）` : ''}為主題，撰寫一張知識點卡片，title 就是「${c.title}」。${ctx}程度：${levelFor(c.cat)}（${LEVEL_DESC[levelFor(c.cat)]}）`;
-  const raw = await run(prompt, `正在重新產生「${c.title}」`, () => regen(c));
-  if (!raw) return;
-  const fresh = normalize(raw, {});
+  const r = await run(async (signal, status) => {
+    let src = null;
+    if (c.srcKey && c.srcKey.startsWith('wiki:')){
+      status('正在重新讀取維基百科條目…');
+      src = await wikiArticle(c.srcKey.slice(5), signal, c.sources?.[0]?.author || '');
+    } else if (c.srcKey && c.srcKey.startsWith('oa:')){
+      status('正在重新讀取論文資料…');
+      const w = await getJSON(`${OA_API}/works/${c.srcKey.slice(3)}?mailto=${OA_MAIL}`, signal, 'OpenAlex 學術資料庫');
+      src = oaToSource(w, c.srcType === 'recent' ? 'recent' : 'classic');
+    }
+    if (!src && !c.srcKey) src = await getSource(modeFor(lv), c.english || c.title, signal, status, true);
+    if (!src) throw new Error('找不到這張卡片的可信來源，無法重新產生。');
+    const focus = c.kind === 'term' ? { term:c.title, parent: parent ? parent.title : '' } : null;
+    const obj = await callGemini(sourcePrompt(src, lv, focus), signal, status, lv);
+    return { obj, src };
+  }, `正在重新產生「${c.title}」`, () => regen(c));
+  if (!r) return;
+  const fresh = normalize(r.obj, {});
   const target = state.cards[c.id] || c;
   Object.assign(target, { english: target.english || fresh.english, field: fresh.field || target.field,
-    body: fresh.body, terms: fresh.terms, consensus: fresh.consensus, sources: fresh.sources,
+    body: fresh.body, terms: fresh.terms, consensus: fresh.consensus, sources: r.src.sources,
     model: fresh.model, fallback: fresh.fallback });
   delete target.stub;
   target.updatedAt = Date.now();
@@ -1011,8 +1233,9 @@ function renderCard(c){
     </article>`;
   }
   const src = c.sources.map(s => {
-    const by = [s.author, s.year].filter(Boolean).join('，');
-    return `<li><a href="${scholarUrl(s)}" target="_blank" rel="noopener noreferrer" title="在 Google Scholar 開啟這篇文獻">${esc(s.title)}</a>${by ? `（${esc(by)}）` : ''}</li>`;
+    const by = [s.author, s.year, s.venue, s.cited ? `被引用 ${Number(s.cited).toLocaleString('zh-TW')} 次` : ''].filter(Boolean).join('，');
+    const direct = /^https?:\/\//.test(s.url || '');
+    return `<li><a href="${direct ? esc(s.url) : scholarUrl(s)}" target="_blank" rel="noopener noreferrer" title="${direct ? '另開新頁閱讀原始來源' : '在 Google Scholar 開啟這篇文獻'}">${esc(s.title)}</a>${by ? `（${esc(by)}）` : ''}</li>`;
   }).join('');
   const terms = c.terms.map(t => {
     const cached = state.termIndex[t.term] && state.cards[state.termIndex[t.term]];
@@ -1026,13 +1249,14 @@ function renderCard(c){
       ${c.field ? `<span class="field">${esc(c.field)}</span>` : ''}
       ${c.english ? `<span class="en">${esc(c.english)}</span>` : ''}
       ${c.level ? `<span class="lv">${esc(c.level)}程度</span>` : ''}
-      ${c.fallback && c.model ? `<span class="lv">由 ${esc(modelLabel(c.model))} 產生</span>` : ''}
+      ${c.srcType ? `<span class="lv">${MODE_LABEL[c.srcType]}</span>` : ''}
+      ${(c.fallback || STRONG_LEVELS.includes(c.level)) && c.model ? `<span class="lv">由 ${esc(modelLabel(c.model))} 撰寫</span>` : ''}
       ${c.doubt ? '<span class="flag">已標記存疑</span>' : ''}
     </div>
     <h1 class="title">${esc(c.title)}</h1>
     <div class="body">${renderBody(c.body)}</div>
-    ${c.consensus ? `<p class="why"><b>為何可信：</b>${esc(c.consensus)}</p>` : ''}
-    ${src ? `<p class="refs-h">參考文獻</p><ul class="sources">${src}</ul>` : ''}
+    ${c.consensus ? `<p class="why"><b>${c.srcType === 'recent' ? '證據程度' : '為何可信'}：</b>${esc(c.consensus)}</p>` : ''}
+    ${src ? `<p class="refs-h">${c.srcType ? '資料來源' : '參考文獻'}</p><ul class="sources">${src}</ul>` : ''}
     ${terms ? `<h2 class="section-h">延伸名詞</h2><div class="rows">${terms}</div>` : ''}
   </article>`;
 }
@@ -1101,7 +1325,7 @@ function renderSettings(){
   </section>
   <section class="group">
     <h2>模型</h2>
-    <p class="hint">知識卡片和提問都會使用這個模型。</p>
+    <p class="hint">知識卡片和提問都會使用這個模型；博士、專家程度的卡片例外，固定使用 3.8 或 3.7 Flash。</p>
     <div class="modellist" role="group" aria-label="選擇模型">${models}</div>
     <label class="check"><input type="checkbox" id="autofallback" ${s.autoFallback !== false ? 'checked' : ''}>忙碌時自動改用其他模型：伺服器忙碌或額度用完時，會先重試，再依序改用 3.7 Flash、3.5 Flash-Lite，並在卡片上標示</label>
     <details class="quota">
@@ -1120,7 +1344,7 @@ function renderSettings(){
   </section>
   <section class="group">
     <h2>內容深度</h2>
-    <p class="hint">這是所有領域的預設程度。在卡片上按笑臉會讓該領域下次更難，按哭臉則更簡單。</p>
+    <p class="hint">這是所有領域的預設程度，也決定知識的來源：高中、大學部摘要自英文維基百科；碩士以該領域高被引、高影響力期刊的代表論文為核心；博士、專家介紹近三年的高被引論文，且只由 3.7 Flash 以上撰寫。在卡片上按笑臉會讓該領域下次更難，按哭臉則更簡單。</p>
     <div class="seg">${LEVELS.map(l => `<button data-act="level" data-level="${l}" aria-pressed="${s.level === l}">${l}</button>`).join('')}</div>
     ${Object.keys(state.bias).filter(k => FIELDS[k]).length ? `<p class="biaslist">已個別調整：${Object.keys(state.bias).filter(k => FIELDS[k]).map(k => `${esc(k)} ${levelFor(k)}`).join('、')}
       <button class="btn sm sec" data-act="biasresetall" style="margin-left:6px">全部恢復預設</button></p>` : ''}
