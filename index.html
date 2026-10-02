@@ -908,9 +908,15 @@ async function paperLookup(term, recent, signal){
 }
 
 function sourcePrompt(src, lv, focus){
-  const head = focus
-    ? `請以專有名詞「${focus.term}」為卡片主題（title 就是「${focus.term}」），說明它的意義${focus.parent ? `，以及它與「${focus.parent}」的關聯` : ''}。`
-    : '';
+  let head = '';
+  let fieldRule = '';
+  if (focus && focus.term) {
+    head = `請以專有名詞「${focus.term}」為卡片主題（title 就是「${focus.term}」），說明它的意義${focus.parent ? `，以及它與「${focus.parent}」的關聯` : ''}。`;
+  } else if (focus && focus.cat && focus.sub) {
+    // 隨機抽卡時，直接告訴 AI 這是什麼領域
+    head = `這份資料是來自「${focus.cat}／${focus.sub}」領域。`;
+    fieldRule = `- field 欄位請強制填寫「${focus.cat}／${focus.sub}」，不要自己變更或發明。`;
+  }
   const level = `程度：${lv}（${LEVEL_DESC[lv]}）`;
   if (src.kind === 'wiki'){
     return `以下是英文維基百科條目「${src.title}」的內容。請「只根據這段原文」撰寫一張繁體中文知識點卡片。
@@ -921,6 +927,7 @@ ${head}
 - title 使用這個主題的台灣慣用中文譯名。
 - consensus 說明原文中支持這項知識的依據（例如：已有證明、經實驗確認）。
 - sources 回傳空陣列，網頁會自動附上原始條目。
+${fieldRule}
 ${level}
 ---原文開始---
 ${src.text}
@@ -937,6 +944,7 @@ ${head}
 - title 使用這篇論文核心概念的繁體中文名稱。
 - consensus 說明這項成果的學術地位（例如被引用次數所反映的影響力，以及是否已成為該領域的標準知識）。
 - sources 回傳空陣列，網頁會自動附上這篇論文。
+${fieldRule}
 ${level}
 ---論文資訊---
 ${info}`;
@@ -949,6 +957,7 @@ ${head}
 - title 使用這篇論文核心發現的繁體中文名稱。
 - consensus 改為說明證據程度：例如這是單一研究或綜述、是否仍待其他研究重複驗證。
 - sources 回傳空陣列，網頁會自動附上這篇論文。
+${fieldRule}
 ${level}
 ---論文資訊---
 ${info}`;
@@ -983,7 +992,7 @@ async function newPoint(opts = {}){
   const r = await run(async (signal, status) => {
     const src = await getSource(mode, SUB_EN[sub] || sub, signal, status, false);
     status(`正在請 ${modelLabel(fallbackChain(lv)[0])} 根據來源撰寫…`);
-    const obj = await callGemini(sourcePrompt(src, lv, null), signal, status, lv);
+    const obj = await callGemini(sourcePrompt(src, lv, { cat, sub }), signal, status, lv);
     return { obj, src };
   }, `正在從「${sub}」挑選知識點`, () => newPoint(opts));
   if (!r) return;
