@@ -92,7 +92,7 @@ function serve(){
 }
 
 async function generate(){
-  if (!KEY){ log('沒有 GEMINI_API_KEY，略過產生新卡片'); return; }
+  if (!KEY) throw new Error('讀不到 GEMINI_API_KEY。請確認 repo 的 Settings → Secrets and variables → Actions 的「Secrets」分頁（不是 Variables）有名稱完全相同的 GEMINI_API_KEY。');
   const server = await serve();
   const browser = await chromium.launch();
   try{
@@ -142,6 +142,7 @@ async function generate(){
       }
     }
     log(`完成：新增 ${fresh.length} 張，Gemini 請求 ${requests} 次`);
+    if (!fresh.length) throw new Error('這次一張卡片都沒有產生成功，請查看上方每一格的「略過」原因。');
   } finally {
     await browser.close();
     server.close();
