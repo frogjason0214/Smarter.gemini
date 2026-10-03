@@ -1206,21 +1206,31 @@ async function newPoint(opts = {}){
 // ---------- 共用卡片庫（library/，由 GitHub Actions 每天產生，與網站同網域） ----------
 const REPO_URL = 'https://github.com/frogjason0214/Smarter.gemini';
 const hasKey = () => !!state.settings.key.trim();
-const lib = { index:null, days:{}, removed:null };
+// 卡片庫依「大領域／難度／月份」切檔（library/math/master/2026-10.json），使用者只下載自己領域與難度的檔案。
+// 路徑用英文代碼，避免中文檔名在 Windows 與網址上出問題；產生腳本也透過 window.__kxBuild 使用同一份對照表。
+const CAT_SLUG = { '數學':'math', '物理':'physics', '化學':'chemistry', '生物學':'biology', '醫學':'medicine',
+  '地球與太空':'earth-space', '工程':'engineering', '資訊':'computing', '統計':'statistics', '經濟與金融':'economics',
+  '社會科學':'social-science', '心理與認知':'psychology', '語言學':'linguistics', '哲學與邏輯':'philosophy',
+  '歷史與考古':'history', '藝術與音樂':'arts' };
+const LEVEL_SLUG = { '高中':'hs', '大學部':'undergrad', '碩士':'master', '博士':'phd', '專家':'expert' };
+const libCell = (cat, level) => CAT_SLUG[cat] && LEVEL_SLUG[level] ? `${CAT_SLUG[cat]}/${LEVEL_SLUG[level]}` : '';
+const libMonthOf = id => { const m = /^L(\d{4})(\d{2})\d{2}-\d+$/.exec(id || ''); return m ? `${m[1]}-${m[2]}` : ''; };
+const libPathOf = c => { const cell = libCell(c.cat, c.level), m = libMonthOf(c.id); return cell && m ? `${cell}/${m}.json` : ''; };
+const lib = { index:null, files:{}, removed:null };
 async function libFetch(path){
   const res = await fetch('library/' + path, { cache:'no-cache' });
   if (!res.ok) throw new Error('library ' + res.status);
   return res.json();
 }
+// index.json（v2）：{ v:2, updated, cells:{ "math/master":["2026-10", …] } }
 function libIndex(){
   if (!lib.index){
     lib.index = libFetch('index.json')
-      .then(d => d && d.v === 1 && Array.isArray(d.days) ? d : { v:1, days:[] })
-      .catch(() => { lib.index = null; return { v:1, days:[] }; });
+      .then(d => d && d.v === 2 && d.cells && typeof d.cells === 'object' ? d : { v:2, cells:{} })
+      .catch(() => { lib.index = null; return { v:2, cells:{} }; });
   }
   return lib.index;
 }
-const libFileOf = id => { const m = /^L(\d{4})(\d{2})(\d{2})-\d+$/.exec(id || ''); return m ? `${m[1]}-${m[2]}-${m[3]}.json` : ''; };
 // 卡片庫雖來自自己的 repo，仍逐欄位檢查與限長，和分享內容同樣處理
 function sanitizeLibCard(c){
   if (!c || !/^L\d{8}-\d{1,4}$/.test(String(c.id)) || !c.title || !c.body || !FIELDS[c.cat]) return null;
@@ -1244,26 +1254,30 @@ function sanitizeLibCard(c){
     doubt:false
   };
 }
-function libDay(file){
-  if (!/^\d{4}-\d{2}-\d{2}\.json$/.test(file)) return Promise.resolve([]);
-  if (!lib.days[file]){
-    lib.days[file] = libFetch(file)
-      .then(d => (d && d.v === 1 && Array.isArray(d.cards) ? d.cards : []).map(sanitizeLibCard).filter(Boolean))
-      .catch(() => { delete lib.days[file]; return []; });
+function libFile(path){
+  if (!/^[a-z-]+\/[a-z]+\/\d{4}-\d{2}\.json$/.test(path)) return Promise.resolve([]);
+  if (!lib.files[path]){
+    lib.files[path] = libFetch(path)
+      .then(d => (d && d.v === 2 && Array.isArray(d.cards) ? d.cards : []).map(sanitizeLibCard).filter(Boolean))
+      .catch(() => { delete lib.files[path]; return []; });
   }
-  return lib.days[file];
+  return lib.files[path];
 }
-// 依各大領域目前的難度（與指定的子領域），從卡片庫隨機挑一張還沒讀過的卡
+// 從使用者的領域中隨機挑一個，依該領域目前的難度，只下載那一格的月份檔，找一張還沒讀過的卡
 async function libPick(opts = {}){
   const idx = await libIndex();
   const cats = opts.cat && FIELDS[opts.cat] ? [opts.cat] : (state.settings.fields.length ? state.settings.fields : Object.keys(FIELDS));
-  const want = new Set(cats.map(c => c + '|' + levelFor(c)));
   const seen = seenKeys();
-  const days = shuffle(idx.days.filter(d => d && d.by && Object.keys(d.by).some(k => want.has(k))));
-  for (const d of days.slice(0, opts.sub ? 12 : 6)){
-    const cand = (await libDay(d.file)).filter(c => want.has(c.cat + '|' + c.level) && (!opts.sub || c.sub === opts.sub)
-      && !state.cards[c.id] && !state.deleted[c.id] && !(lib.removed && lib.removed[c.id]) && !(c.srcKey && seen.has(c.srcKey)));
-    if (cand.length) return pick(cand);
+  let budget = opts.sub ? 10 : 6;   // 每次抽卡最多下載幾個檔案
+  for (const cat of shuffle(cats)){
+    const level = levelFor(cat), cell = libCell(cat, level);
+    const months = Array.isArray(idx.cells[cell]) ? idx.cells[cell] : [];
+    for (const m of shuffle(months)){
+      if (budget-- <= 0) return null;
+      const cand = (await libFile(`${cell}/${m}.json`)).filter(c => c.cat === cat && c.level === level && (!opts.sub || c.sub === opts.sub)
+        && !state.cards[c.id] && !state.deleted[c.id] && !(lib.removed && lib.removed[c.id]) && !(c.srcKey && seen.has(c.srcKey)));
+      if (cand.length) return pick(cand);
+    }
   }
   return null;
 }
@@ -1337,7 +1351,7 @@ async function regen(c){
   if (!c) return;
   // 卡片庫的卡：直接從卡片庫取回原本的內容，不需要金鑰
   if (c.lib){
-    const orig = await run(async () => (await libDay(libFileOf(c.id))).find(x => x.id === c.id) || null, '正在從卡片庫取回內容…', () => regen(c));
+    const orig = await run(async () => (await libFile(libPathOf(c))).find(x => x.id === c.id) || null, '正在從卡片庫取回內容…', () => regen(c));
     const target = state.cards[c.id];
     if (orig && target){
       Object.assign(target, { body:orig.body, terms:orig.terms, sources:orig.sources, consensus:orig.consensus, questions:orig.questions });
@@ -2929,7 +2943,7 @@ window.addEventListener('hashchange', () => { readShareFromHash().then(ok => { i
 if (location.hash === '#kx-build' && window.__KX_BUILD__ && window.__KX_BUILD__.key){
   state.settings = Object.assign({}, state.settings, { key:String(window.__KX_BUILD__.key), model:DEFAULT_MODEL, autoFallback:true });
   window.__kxBuild = {
-    FIELDS, LEVELS,
+    FIELDS, LEVELS, CAT_SLUG, LEVEL_SLUG,
     async makePoint(cat, lv, seenList){
       try{
         const card = await makePoint({ cat, sub:pick(FIELDS[cat]), lv, seen:new Set(seenList), status:() => {} });

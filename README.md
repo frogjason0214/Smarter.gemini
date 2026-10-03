@@ -230,7 +230,7 @@ AI 模型最主要的風險，是在缺乏依據時「自信地編造」事實�
 ## 技術架構
 
 - **單一 HTML 檔**：介面、樣式與程式邏輯全部寫在 `index.html`，無建置流程。
-- **共用卡片庫**：`library/index.json`（各日期檔的領域與難度統計）、`library/YYYY-MM-DD.json`（當天的卡片與預存測驗題）、`library/removed.json`（下架清單）。由 GitHub Actions（`.github/workflows/library.yml` 執行 `scripts/build-library.mjs`，使用 Playwright 與 Chromium）每天產生並提交。回報範本在 `.github/ISSUE_TEMPLATE/report.yml`。
+- **共用卡片庫**：依「大領域／難度／月份」切檔，例如 `library/math/master/2026-10.json`（路徑代碼見 `index.html` 的 `CAT_SLUG`、`LEVEL_SLUG`），使用者只下載自己領域與難度的檔案；`library/index.json` 列出每一格有哪些月份，`library/removed.json` 是下架清單。每張卡約 4.4 KB，每天約 80 張、一年約 128 MB；超過 500 MB 時產生腳本會在執行紀錄提醒，再討論舊卡片的保存期限。由 GitHub Actions（`.github/workflows/library.yml` 執行 `scripts/build-library.mjs`，使用 Playwright 與 Chromium）每天產生並提交。回報範本在 `.github/ISSUE_TEMPLATE/report.yml`。
 - **外部程式庫**（皆由 CDN 載入）：D3.js 7.9.0（知識樹地圖）、MathJax 3.2.2（數學式）、Google Identity Services（Drive 授權）。
 - **外部 API**：Gemini API（`generativelanguage.googleapis.com`）、MediaWiki Action API（`en.wikipedia.org/w/api.php`）、OpenAlex（`api.openalex.org`）、Google Drive API v3。
 - **本機儲存**：localStorage，鍵名以 `kx_` 開頭；完整卡片上限 400 張，超過時最舊的卡片只清除內文、保留在知識樹中，可重新產生。
