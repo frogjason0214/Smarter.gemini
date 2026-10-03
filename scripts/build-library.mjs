@@ -28,7 +28,9 @@ const KEY = (process.env.GEMINI_API_KEY || '').trim();
 const TOKEN = process.env.GITHUB_TOKEN || '';
 const REPO = process.env.GITHUB_REPOSITORY || '';
 const COUNT = Number(process.env.KX_COUNT || 0) || 0;
-const MAX_REQUESTS = 350;      // 免費額度約每天 500 次，保留餘裕給重試與備援
+const MAX_REQUESTS = 450;      // 免費額度約每天 500 次，保留少量餘裕給重試與備援
+const TARGET = 10;             // 每個「大領域＋難度」的最低庫存；不足的格子每天輪流多產生，補齊後回到每格每天 1 張
+const TIME_LIMIT_MS = 150 * 60e3;   // 產生階段最多跑多久（排程上限 180 分鐘，保留提交時間）
 const GAP_MS = 5000;           // 每次呼叫後等待，避免超過每分鐘請求上限
 const BATCH = 5;               // 每幾張卡一起出題（一次請求）
 const WARN_BYTES = 500 * 1024 * 1024;   // 卡片庫超過 500 MB 時提醒討論保存期限
@@ -143,41 +145,63 @@ async function generate(){
     const date = taipeiDate(), prefix = `L${date.replace(/-/g, '')}-`;
     let seq = Object.values(files).flatMap(f => f.cards).filter(c => String(c.id).startsWith(prefix))
       .reduce((m, c) => Math.max(m, Number(String(c.id).split('-')[1]) || 0), 0);
-    let cells = Object.keys(FIELDS).flatMap(cat => LEVELS.map(lv => ({ cat, lv })));
-    cells = COUNT > 0 ? shuffle(cells).slice(0, COUNT) : shuffle(cells);
-    log(`開始產生 ${date}：${cells.length} 格`);
+    // 產生順序：第一輪每格 1 張（每天的固定產量）；之後只輪流替庫存不到 TARGET 張的格子補，每輪每格 1 張，
+    // 直到全部達標、用到請求上限或時間上限為止。手動測試（KX_COUNT > 0）只跑指定張數，不回補。
+    const all = Object.keys(FIELDS).flatMap(cat => LEVELS.map(lv => ({ cat, lv, key:cellOf(cat, lv) })));
+    const stock = {};
+    for (const f of Object.values(files)) stock[f.cell] = (stock[f.cell] || 0) + f.cards.length;
+    const failures = {};
+    const startedAt = Date.now();
+    const rounds = function* (){
+      if (COUNT > 0){ yield* shuffle(all).slice(0, COUNT); return; }
+      yield* shuffle(all);
+      for (;;){
+        const short = all.filter(c => (stock[c.key] || 0) < TARGET && (failures[c.key] || 0) < 2);
+        if (!short.length) return;
+        yield* shuffle(short);
+      }
+    };
+    const low = all.filter(c => (stock[c.key] || 0) < TARGET).length;
+    log(`開始產生 ${date}：${COUNT > 0 ? `測試 ${COUNT} 張` : `每格 1 張，另有 ${low} 格庫存不到 ${TARGET} 張，會輪流回補`}`);
 
     const fresh = [];
-    for (const { cat, lv } of cells){
-      if (requests >= MAX_REQUESTS){ log('已達請求上限，停止產生'); break; }
+    let pending = [];
+    // 每 BATCH 張卡出一次題，題目存進卡片，使用者測驗時就不必再呼叫 Gemini
+    const askBatch = async () => {
+      if (!pending.length) return;
+      const batch = pending; pending = [];
+      const r = await page.evaluate(cards => window.__kxBuild.questions(cards), batch.map(c => ({ id:c.id, title:c.title, body:c.body })));
+      await sleep(GAP_MS);
+      if (r.error){ log('出題失敗：', r.error); return; }
+      for (const q of r.items){
+        const card = batch.find(c => c.id === q.id);
+        if (card) card.questions = [{ q:q.q, options:q.options, answer:q.answer, explain:q.explain }];
+      }
+    };
+    for (const { cat, lv, key } of rounds()){
+      // 預留這一張卡與它的出題請求
+      if (requests + 2 > MAX_REQUESTS){ log('已達請求上限，停止產生'); break; }
+      if (Date.now() - startedAt > TIME_LIMIT_MS){ log('已達時間上限，停止產生'); break; }
       const r = await page.evaluate(([cat, lv, seen]) => window.__kxBuild.makePoint(cat, lv, seen), [cat, lv, [...seenKeys]]);
       await sleep(GAP_MS);
-      if (r.error){ log(`略過 ${cat}／${lv}：${r.error}`); continue; }
+      if (r.error){ failures[key] = (failures[key] || 0) + 1; log(`略過 ${cat}／${lv}：${r.error}`); continue; }
       const c = r.card;
       seq++;
       const card = { id:`${prefix}${String(seq).padStart(2, '0')}`,
         title:c.title, english:c.english, field:c.field, cat:c.cat, sub:c.sub, level:c.level,
         srcType:c.srcType, srcKey:c.srcKey, sources:c.sources, body:c.body, terms:c.terms, consensus:c.consensus,
         model:c.model, createdAt:Date.now(), questions:[] };
-      if (!addCard(card)){ log(`略過 ${cat}／${lv}：分類 ${c.cat}／${c.level} 沒有對應的路徑代碼`); continue; }
+      if (!addCard(card)){ failures[key] = 9; log(`略過 ${cat}／${lv}：分類 ${c.cat}／${c.level} 沒有對應的路徑代碼`); continue; }
       if (c.srcKey) seenKeys.add(c.srcKey);
-      fresh.push(card);
+      const ck = cellOf(card.cat, card.level);
+      stock[ck] = (stock[ck] || 0) + 1;
+      fresh.push(card); pending.push(card);
       log(`${card.id} ${cat}／${card.sub}／${lv}：${card.title}`);
+      if (pending.length >= BATCH) await askBatch();
     }
-
-    // 每 BATCH 張卡出一次題，題目存進卡片，使用者測驗時就不必再呼叫 Gemini
-    for (let i = 0; i < fresh.length; i += BATCH){
-      if (requests >= MAX_REQUESTS){ log('已達請求上限，剩下的卡片暫不出題'); break; }
-      const batch = fresh.slice(i, i + BATCH);
-      const r = await page.evaluate(cards => window.__kxBuild.questions(cards), batch.map(c => ({ id:c.id, title:c.title, body:c.body })));
-      await sleep(GAP_MS);
-      if (r.error){ log('出題失敗：', r.error); continue; }
-      for (const q of r.items){
-        const card = batch.find(c => c.id === q.id);
-        if (card) card.questions = [{ q:q.q, options:q.options, answer:q.answer, explain:q.explain }];
-      }
-    }
-    log(`完成：新增 ${fresh.length} 張，Gemini 請求 ${requests} 次`);
+    await askBatch();
+    const stillLow = all.filter(c => (stock[c.key] || 0) < TARGET).length;
+    log(`完成：新增 ${fresh.length} 張，Gemini 請求 ${requests} 次${stillLow ? `；仍有 ${stillLow} 格不到 ${TARGET} 張，明天繼續回補` : '；每格都已達標'}`);
     if (!fresh.length) throw new Error('這次一張卡片都沒有產生成功，請查看上方每一格的「略過」原因。');
   } finally {
     await browser.close();
