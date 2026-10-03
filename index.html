@@ -780,16 +780,9 @@ async function geminiRequest(payload, signal, model = modelName()){
 const RETRYABLE = new Set([500, 502, 503, 504]);
 const modelLabel = id => (MODELS.find(m => m.id === id)?.name || id).replace('Gemini ', '');
 // ---------- 模型選擇與重試 ----------
-const STRONG_LEVELS = ['博士', '專家'];
-const STRONG_MODELS = ['gemini-3.8-flash', 'gemini-3.7-flash'];
-function fallbackChain(level){
+// 所有難度都用設定頁所選的模型；模型只負責根據來源原文摘要
+function fallbackChain(){
   const sel = modelName();
-  if (STRONG_LEVELS.includes(level)){
-    // 博士以上：只用 3.7 Flash 以上，絕不降級
-    const first = STRONG_MODELS.includes(sel) ? sel : STRONG_MODELS[0];
-    if (state.settings.autoFallback === false) return [first];
-    return [first, ...STRONG_MODELS.filter(m => m !== first)];
-  }
   if (state.settings.autoFallback === false) return [sel];
   const rest = sel === 'gemini-3.5-flash-lite' ? ['gemini-3.5-flash'] : ['gemini-3.7-flash', 'gemini-3.5-flash-lite'];
   return [sel, ...rest.filter(m => m !== sel)];
@@ -799,7 +792,7 @@ const sleep = (ms, signal) => new Promise((resolve, reject) => {
   if (signal) signal.addEventListener('abort', () => { clearTimeout(t); reject(new DOMException('aborted', 'AbortError')); }, { once:true });
 });
 
-async function geminiSmart(payload, signal, onStatus, chain = fallbackChain(), strong = false){
+async function geminiSmart(payload, signal, onStatus, chain = fallbackChain()){
   let lastErr;
   for (let i = 0; i < chain.length; i++){
     const model = chain[i];
@@ -823,9 +816,6 @@ async function geminiSmart(payload, signal, onStatus, chain = fallbackChain(), s
     const canFallback = lastErr && (RETRYABLE.has(lastErr.status) || lastErr.status === 429);
     if (!canFallback || i === chain.length - 1) break;
     if (onStatus) onStatus(`改用 ${modelLabel(chain[i + 1])}…`);
-  }
-  if (strong && lastErr && (RETRYABLE.has(lastErr.status) || lastErr.status === 429)){
-    throw new Error('3.8 Flash 與 3.7 Flash 目前都無法使用（伺服器忙碌或今日額度已用完）。博士以上的內容只會由 3.7 Flash 以上的模型撰寫，請稍後再試，或用哭臉暫時調降這個領域的難度。');
   }
   if (lastErr && RETRYABLE.has(lastErr.status)){
     throw new Error(chain.length > 1
@@ -854,15 +844,14 @@ function parseCard(text){
   return null;
 }
 
-async function callGemini(userText, signal, onStatus, level){
-  const strong = STRONG_LEVELS.includes(level);
+async function callGemini(userText, signal, onStatus){
   // 格式錯誤時自動再請模型重寫一次
   for (let attempt = 0; attempt < 2; attempt++){
     const text = await geminiSmart({
       systemInstruction:{ parts:[{ text:SYSTEM }] },
       contents:[{ role:'user', parts:[{ text:userText }] }],
       generationConfig:{ responseMimeType:'application/json', temperature:0.4 }
-    }, signal, onStatus, fallbackChain(level), strong);
+    }, signal, onStatus, fallbackChain());
     const obj = parseCard(text);
     if (obj && obj.title && obj.body) return obj;
     if (attempt === 0 && onStatus) onStatus('回傳格式有誤，正在請模型重新撰寫…');
@@ -1098,12 +1087,15 @@ async function newPoint(opts = {}){
     : pickField();
   const lv = levelFor(cat);
   const mode = modeFor(lv);
+  // 撰寫失敗時，「再試一次」沿用已經找到的來源，只重新請模型撰寫
+  let found = opts.src && opts.mode === mode ? opts.src : null;
   const r = await run(async (signal, status) => {
-    const src = await getSource(mode, SUB_EN[sub] || sub, signal, status, false);
-    status(`正在請 ${modelLabel(fallbackChain(lv)[0])} 根據來源撰寫…`);
-    const obj = await callGemini(sourcePrompt(src, lv, { cat, sub }), signal, status, lv);
+    const src = found || await getSource(mode, SUB_EN[sub] || sub, signal, status, false);
+    found = src;
+    status(`正在請 ${modelLabel(fallbackChain()[0])} 根據來源撰寫…`);
+    const obj = await callGemini(sourcePrompt(src, lv, { cat, sub }), signal, status);
     return { obj, src };
-  }, `正在從「${sub}」挑選知識點`, () => newPoint(opts));
+  }, `正在從「${sub}」挑選知識點`, () => newPoint(found ? { cat, sub, src:found, mode } : opts));
   if (!r) return;
   
   // ✅ 驗證並修正分類
@@ -1139,8 +1131,8 @@ async function openTerm(term, english){
         ? `英文維基百科找不到「${term}」的條目。為了確保內容來自可信來源，這個名詞暫時無法展開。`
         : `OpenAlex 找不到與「${term}」相關、有公開摘要的${mode === 'recent' ? '近三年' : '高被引'}論文。為了確保內容來自可信來源，這個名詞暫時無法展開。`);
     }
-    status(`正在請 ${modelLabel(fallbackChain(lv)[0])} 根據來源撰寫…`);
-    const obj = await callGemini(sourcePrompt(src, lv, { term, parent: parent ? parent.title : '' }), signal, status, lv);
+    status(`正在請 ${modelLabel(fallbackChain()[0])} 根據來源撰寫…`);
+    const obj = await callGemini(sourcePrompt(src, lv, { term, parent: parent ? parent.title : '' }), signal, status);
     return { obj, src };
   }, `正在展開「${term}」`, () => openTerm(term, english));
   if (!r) return;
@@ -1171,7 +1163,7 @@ async function regen(c){
     if (!src && !c.srcKey) src = await getSource(modeFor(lv), c.english || c.title, signal, status, true);
     if (!src) throw new Error('找不到這張卡片的可信來源，無法重新產生。');
     const focus = c.kind === 'term' ? { term:c.title, parent: parent ? parent.title : '' } : null;
-    const obj = await callGemini(sourcePrompt(src, lv, focus), signal, status, lv);
+    const obj = await callGemini(sourcePrompt(src, lv, focus), signal, status);
     return { obj, src };
   }, `正在重新產生「${c.title}」`, () => regen(c));
   if (!r) return;
@@ -1779,7 +1771,7 @@ function renderCard(c, opts = {}){
       ${c.english ? `<span class="en">${esc(c.english)}</span>` : ''}
       ${c.level ? `<span class="lv">${esc(c.level)}程度</span>` : ''}
       ${c.srcType ? `<span class="lv">${MODE_LABEL[c.srcType]}</span>` : ''}
-      ${(opts.shared || c.fallback || STRONG_LEVELS.includes(c.level)) && c.model ? `<span class="lv">由 ${esc(modelLabel(c.model))} 撰寫</span>` : ''}
+      ${c.model ? `<span class="lv">由 ${esc(modelLabel(c.model))} 撰寫</span>` : ''}
       ${opts.shared && c.createdAt ? `<span class="lv">產生於 ${new Date(c.createdAt).toLocaleDateString('zh-TW')}</span>` : ''}
       ${c.sharedFrom ? `<span class="lv">來自分享</span>` : ''}
       ${c.doubt ? '<span class="flag">已標記存疑</span>' : ''}
@@ -1860,9 +1852,9 @@ function renderSettings(){
   </section>
   <section class="group">
     <h2>模型</h2>
-    <p class="hint">知識卡片和提問都會使用這個模型；博士、專家程度的卡片例外，固定使用 3.8 或 3.7 Flash。</p>
+    <p class="hint">知識卡片和提問都會使用這個模型，所有程度皆同。</p>
     <div class="modellist" role="group" aria-label="選擇模型">${models}</div>
-    <label class="check"><input type="checkbox" id="autofallback" ${s.autoFallback !== false ? 'checked' : ''}>忙碌時自動改用其他模型：伺服器忙碌或額度用完時，會先重試，再依序改用 3.7 Flash、3.5 Flash-Lite，並在卡片上標示</label>
+    <label class="check"><input type="checkbox" id="autofallback" ${s.autoFallback !== false ? 'checked' : ''}>忙碌時自動改用其他模型：伺服器忙碌或額度用完時，會先重試，再依序改用 3.7 Flash、3.5 Flash-Lite（選 Flash-Lite 時改用 3.5 Flash）</label>
     <details class="quota">
       <summary>各模型的免費額度說明（RPM、TPM、RPD）</summary>
       <div class="quota-body">
@@ -1879,7 +1871,7 @@ function renderSettings(){
   </section>
   <section class="group">
     <h2>內容深度</h2>
-    <p class="hint">這是所有領域的預設程度，也決定知識的來源：高中、大學部摘要自英文維基百科；碩士以該領域高被引、高影響力期刊的代表論文為核心；博士、專家介紹近三年的高被引論文，且只由 3.7 Flash 以上撰寫。在卡片上按笑臉會讓該領域下次更難，按哭臉則更簡單。</p>
+    <p class="hint">這是所有領域的預設程度，也決定知識的來源：高中、大學部摘要自英文維基百科；碩士以該領域高被引、高影響力期刊的代表論文為核心；博士、專家介紹近三年的高被引論文。在卡片上按笑臉會讓該領域下次更難，按哭臉則更簡單。</p>
     <div class="seg">${LEVELS.map(l => `<button data-act="level" data-level="${l}" aria-pressed="${s.level === l}">${l}</button>`).join('')}</div>
     ${Object.keys(state.bias).filter(k => FIELDS[k]).length ? `<p class="biaslist">已個別調整：${Object.keys(state.bias).filter(k => FIELDS[k]).map(k => `${esc(k)} ${levelFor(k)}`).join('、')}
       <button class="btn sm sec" data-act="biasresetall" style="margin-left:6px">全部恢復預設</button></p>` : ''}
