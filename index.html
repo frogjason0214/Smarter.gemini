@@ -36,6 +36,7 @@ mjx-container[display="true"]{display:block;overflow-x:auto;overflow-y:hidden;ma
 :root{
   --bg:#F5F6F4; --surface:#FFFFFF; --ink:#1F2428; --muted:#68717A; --rule:#DDE1E3;
   --accent:#2C5F7F; --accent-ink:#FFFFFF; --accent-soft:#E2EBF1; --warn:#9A5B13; --warn-soft:#F6ECDD; --L:40%;
+  --bronze:#9C6233; --silver:#76808A; --gold:#A87B12;
   --serif:"Noto Serif TC","Songti TC","PMingLiU",serif;
   --sans:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
   color-scheme:light;
@@ -44,12 +45,14 @@ mjx-container[display="true"]{display:block;overflow-x:auto;overflow-y:hidden;ma
   :root:not([data-theme="light"]){
     --bg:#15191C; --surface:#1D2226; --ink:#E5E8EA; --muted:#98A1A9; --rule:#2C3338;
     --accent:#8DB8D6; --accent-ink:#10202B; --accent-soft:#22313B; --warn:#E0B074; --warn-soft:#33291C; --L:70%;
+    --bronze:#D49A6A; --silver:#B9C2C9; --gold:#E2BC55;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
     --bg:#15191C; --surface:#1D2226; --ink:#E5E8EA; --muted:#98A1A9; --rule:#2C3338;
     --accent:#8DB8D6; --accent-ink:#10202B; --accent-soft:#22313B; --warn:#E0B074; --warn-soft:#33291C; --L:70%;
+    --bronze:#D49A6A; --silver:#B9C2C9; --gold:#E2BC55;
     color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -196,6 +199,49 @@ body.maponly{overflow:hidden;overscroll-behavior:none}
 .mapsvg .node.sel .dot{stroke:var(--ink);stroke-width:3}
 .mapsvg .node.sel text{font-weight:700}
 .mapsvg.far .node.card.sel text{display:inline}
+.mapsvg .award{fill:none;stroke:var(--gold);stroke-width:2.2;vector-effect:non-scaling-stroke}
+.mapsvg .node.tier1 .award{stroke:var(--bronze)}
+.mapsvg .node.tier2 .award{stroke:var(--silver)}
+
+/* 測驗與成就 */
+.qline{font-size:13.5px;color:var(--muted);margin:6px 0 4px}
+.row .s.gold{color:var(--gold);font-weight:600}
+.tico{display:inline-flex}
+.tico svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tier0{color:var(--muted)} .tier1{color:var(--bronze)} .tier2{color:var(--silver)} .tier3,.tierb{color:var(--gold)}
+.achsum{font-size:14.5px;color:var(--muted);margin:2px 0 12px}
+.achsum b{color:var(--ink);font-size:20px}
+.achlist{margin-top:14px;border-top:1px solid var(--rule)}
+.ach{border-bottom:1px solid var(--rule);padding:12px 0}
+.achhead{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;background:none;border:0;padding:2px 0;font-size:16px;font-weight:600;text-align:left;width:100%}
+.achhead .s{font-weight:400;color:var(--muted);font-size:13.5px}
+button.achhead[aria-pressed="true"]{color:var(--accent)}
+.ach .chips{margin-top:8px}
+.chip.earned{border-color:var(--gold);color:var(--gold)}
+.chip.earned[aria-pressed="true"]{background:color-mix(in srgb,var(--gold) 14%,transparent)}
+.awsel{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13.5px;color:var(--muted)}
+.qhead{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13.5px;color:var(--muted);margin:4px 0 14px}
+.qhead .x{background:none;border:0;color:var(--muted);font-size:14px;padding:4px 2px}
+.qfrom{font-size:13px;color:var(--muted);margin:0 0 6px}
+.qq{font-family:var(--serif);font-size:20px;line-height:1.75;font-weight:600;margin:0 0 18px}
+.qopts{display:flex;flex-direction:column;gap:10px}
+.qopt{display:flex;gap:12px;align-items:flex-start;text-align:left;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 14px;font-size:16px;line-height:1.65;color:var(--ink)}
+.qopt:disabled{cursor:default}
+.qopt .qk{font-weight:700;color:var(--muted);min-width:1.1em}
+.qopt.right{border-color:var(--accent);background:var(--accent-soft)}
+.qopt.right .qk{color:var(--accent)}
+.qopt.wrong{border-color:var(--warn);background:var(--warn-soft)}
+.qopt.wrong .qk{color:var(--warn)}
+.qfb{margin-top:18px;padding:14px 16px;border-radius:12px;background:var(--surface);border:1px solid var(--rule)}
+.qres{font-weight:600;margin:0 0 6px}
+.qfb.ok .qres{color:var(--accent)}
+.qfb.no .qres{color:var(--warn)}
+.qexp{margin:0 0 10px;font-size:15px;line-height:1.8}
+.qsrc{margin:6px 0 12px;font-size:14px}
+.qsrc summary{cursor:pointer;color:var(--accent)}
+.qsrc .body p{font-size:15.5px;line-height:1.85}
+.awrow{display:flex;align-items:center;gap:10px;padding:12px 2px;border-bottom:1px solid var(--rule)}
+.awrow .awname{flex:1;font-weight:600}
 .stub{color:var(--muted);margin:8px 0 20px}
 
 /* ask panel：占螢幕下半部，上方文章可繼續閱讀 */
@@ -392,6 +438,9 @@ const state = {
   models: []
 };
 state.path = state.path.filter(id => state.cards[id]);
+// 測驗紀錄：scored = 每張卡第一次答對的時間與分數；awards = 已取得的獎章／獎盃與取得時間
+state.qx = (q => ({ scored: q && typeof q.scored === 'object' ? q.scored : {}, awards: q && typeof q.awards === 'object' ? q.awards : {} }))(store.get('kx_quiz', null));
+state.qs = null;
 if (!MODELS.some(m => m.id === state.settings.model)){ state.settings.model = DEFAULT_MODEL; store.set('kx_settings', state.settings); }
 state.sheet = null; state.mapT = null;
 
@@ -439,6 +488,7 @@ function persist(){
   store.set('kx_bias', state.bias);
   store.set('kx_biasat', state.biasAt);
   store.set('kx_path', state.path);
+  store.set('kx_quiz', state.qx);
   scheduleSync();
 }
 
@@ -457,7 +507,7 @@ const fmtDateTime = ts => new Date(ts).toLocaleString('zh-TW', { month:'numeric'
 function snapshot(includeKey){
   const data = { app:'knowledge-explorer', version:2, exportedAt:new Date().toISOString(),
     cards:state.cards, saved:state.saved, savedLog:state.savedLog, deleted:state.deleted, seen:state.seen.slice(-300),
-    termIndex:state.termIndex, bias:state.bias, biasAt:state.biasAt };
+    termIndex:state.termIndex, bias:state.bias, biasAt:state.biasAt, quiz:state.qx };
   if (includeKey && state.settings.key.trim()){ data.geminiKey = state.settings.key.trim(); data.keyAt = state.settings.keyAt || 0; }
   return data;
 }
@@ -505,6 +555,18 @@ function mergeBackup(data){
   state.seen = [...new Set([...state.seen, ...(data.seen || [])])];
   for (const [k, v] of Object.entries(data.termIndex || {})) if ((!state.termIndex[k] || !state.cards[state.termIndex[k]]) && state.cards[v]) state.termIndex[k] = v;
   if ((data.biasAt || 0) > state.biasAt){ state.bias = data.bias || {}; state.biasAt = data.biasAt; changed = true; }
+  // 測驗紀錄：兩邊取聯集，同一張卡或同一個獎項保留較早（第一次取得）的時間
+  const rq = data.quiz || {};
+  for (const [id, v] of Object.entries(rq.scored || {})){
+    if (!v || typeof v.t !== 'number' || typeof v.pts !== 'number') continue;
+    const cur = state.qx.scored[id];
+    if (!cur || v.t < cur.t){ state.qx.scored[id] = { t:v.t, pts:v.pts }; changed = true; }
+  }
+  for (const [k, t] of Object.entries(rq.awards || {})){
+    if (typeof t !== 'number') continue;
+    if (!state.qx.awards[k] || t < state.qx.awards[k]){ state.qx.awards[k] = t; changed = true; }
+  }
+  if (checkAwards().length) changed = true;
   rt.applying = true; persist(); rt.applying = false;
   return { added, changed, keyRestored };
 }
@@ -1600,15 +1662,16 @@ async function drawShareImage(c, allowMath){
 }
 
 // 點擊當下若圖已畫好，就同步進入 navigator.share（iOS 需要）
-async function shareImage(c){
-  const entry = prepareShareImage(c);
+function shareImage(c){ return deliverImage(prepareShareImage(c), c.title); }
+// entry = { file, promise }：圖已畫好就同步呼叫分享；否則等畫完（iOS 可能因此改走剪貼簿或下載）
+async function deliverImage(entry, title){
   let file = entry.file;
   if (!file){
     toast('正在產生圖片…');
     try{ file = await entry.promise; }catch{ toast('無法產生圖片'); return; }
   }
   if (navigator.canShare && navigator.canShare({ files:[file] })){
-    try{ await navigator.share({ files:[file], title:c.title }); return; }
+    try{ await navigator.share({ files:[file], title }); return; }
     catch(e){ if (e.name === 'AbortError') return; }
   }
   if (navigator.clipboard && window.ClipboardItem){
@@ -1620,6 +1683,302 @@ async function shareImage(c){
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   toast('已下載圖片');
+}
+
+// ---------- 測驗、積分、獎章與獎盃 ----------
+// 每張卡第一次答對時依難度計分（高中 1 … 專家 5），之後不再加分；
+// 子領域積分達 QUIZ_BADGE 得獎章，大領域依獎章數得銅（1 個）、銀（一半）、金（全部）獎盃。獎項取得後永久保留。
+const QUIZ_BADGE = 20, QUIZ_SIZE = 5;
+const TIER = ['', '銅', '銀', '金'];
+const cardPts = c => { const i = LEVELS.indexOf(c && c.level); return i < 0 ? 2 : i + 1; };
+const badgeKey = (cat, sub) => `sub:${cat}|${sub}`;
+const trophyKey = (cat, tier) => `cat:${cat}:${tier}`;
+const badgesIn = cat => (FIELDS[cat] || []).filter(s => state.qx.awards[badgeKey(cat, s)]).length;
+const tierOf = cat => [3, 2, 1].find(t => state.qx.awards[trophyKey(cat, t)]) || 0;
+function parseAward(k){
+  if (k.startsWith('sub:')){ const [cat, sub] = k.slice(4).split('|'); return { cat, sub, tier:0 }; }
+  const p = k.split(':'); return { cat:p[1], sub:null, tier:Number(p[2]) };
+}
+function awardLabel(k){
+  const a = parseAward(k);
+  return a.sub ? `${a.sub}獎章` : `${a.cat}${TIER[a.tier]}獎盃`;
+}
+// 積分一律依卡片「目前」的分類計算，移動卡片時積分跟著走；刪除的卡不再計入
+function quizStats(){
+  const subPts = {}, catPts = {}, subN = {}, catN = {};
+  let total = 0, count = 0;
+  for (const [id, r] of Object.entries(state.qx.scored)){
+    const c = state.cards[id];
+    if (!c) continue;
+    total += r.pts; count++;
+    if (!FIELDS[c.cat]) continue;
+    catPts[c.cat] = (catPts[c.cat] || 0) + r.pts; catN[c.cat] = (catN[c.cat] || 0) + 1;
+    if (FIELDS[c.cat].includes(c.sub)){
+      const k = c.cat + '|' + c.sub;
+      subPts[k] = (subPts[k] || 0) + r.pts; subN[k] = (subN[k] || 0) + 1;
+    }
+  }
+  return { subPts, catPts, subN, catN, total, count };
+}
+// 把新達成的獎項寫入 awards，回傳新獎項的鍵
+function checkAwards(){
+  const { subPts } = quizStats();
+  const now = Date.now(), fresh = [];
+  for (const [cat, subs] of Object.entries(FIELDS)){
+    for (const s of subs){
+      const k = badgeKey(cat, s);
+      if (!state.qx.awards[k] && (subPts[cat + '|' + s] || 0) >= QUIZ_BADGE){ state.qx.awards[k] = now; fresh.push(k); }
+    }
+    const n = badgesIn(cat);
+    [1, Math.ceil(subs.length / 2), subs.length].forEach((need, i) => {
+      const k = trophyKey(cat, i + 1);
+      if (!state.qx.awards[k] && n >= need){ state.qx.awards[k] = now; fresh.push(k); }
+    });
+  }
+  return fresh;
+}
+
+// 可出題的卡：有內文、未被精簡、有大領域分類（未分類不出題）
+function quizPool(scope){
+  return Object.values(state.cards).filter(c => !c.stub && c.body && FIELDS[c.cat]
+    && (!scope || (c.cat === scope.cat && (!scope.sub || c.sub === scope.sub))));
+}
+// 優先挑還沒計分的卡，不足再用已計分的補（只當複習）
+function pickQuizCards(pool){
+  const fresh = shuffle(pool.filter(c => !state.qx.scored[c.id]));
+  const done = shuffle(pool.filter(c => state.qx.scored[c.id]));
+  return [...fresh, ...done].slice(0, QUIZ_SIZE).map(c => c.id);
+}
+
+const QUIZ_SYSTEM = `你是一位嚴謹的大學助教，要根據學生讀過的「知識點卡片」出單選題，幫助他們複習。
+規則：
+1. 全部使用繁體中文與台灣學界慣用譯名。
+2. 每張卡片出且只出 1 題，id 欄位照抄該卡片的 id。
+3. 題目與答案只能根據該卡片的內文；不得引入內文沒有的事實、數字或人名。正確答案必須能在內文中找到明確依據。
+4. 每題 4 個選項，只有 1 個正確；錯誤選項要看似合理，但依內文可以明確判斷為錯。不要用「以上皆是」「以上皆非」，選項文字前不要加 A、B、C、D 等編號。
+5. 題目要考理解，例如條件、機制、因果或定義的關鍵差異，不要只考標題、年份等枝節。
+6. answer 填正確選項的索引（0 到 3）。explain 用一到兩句說明為何正確，並指出內文中的依據。
+7. 數學式用 LaTeX，行內式寫在 $...$ 中；JSON 字串裡的反斜線必須寫成兩個。
+8. 只輸出一個 JSON 物件，不要有任何其他文字。
+格式：
+{"questions":[{"id":"卡片 id","q":"題目","options":["選項","選項","選項","選項"],"answer":0,"explain":"解析"}]}`;
+
+// 檢查模型出的題：四個不重複的選項、答案索引正確、id 對得上；不合格的直接丟掉。選項順序由程式重新洗牌
+function validQuestions(obj, cards){
+  const ids = new Set(cards.map(c => c.id)), out = {};
+  for (const q of obj && Array.isArray(obj.questions) ? obj.questions : []){
+    const id = String(q && q.id || '');
+    if (!ids.has(id) || out[id]) continue;
+    const opts = Array.isArray(q.options) ? q.options.map(o => String(o == null ? '' : o).trim()) : [];
+    const ans = Number(q.answer), text = String(q.q || '').trim();
+    if (!text || opts.length !== 4 || opts.some(o => !o) || new Set(opts).size !== 4 || !Number.isInteger(ans) || ans < 0 || ans > 3) continue;
+    const order = shuffle([0, 1, 2, 3]);
+    out[id] = { cardId:id, q:text, options:order.map(k => opts[k]), answer:order.indexOf(ans), explain:String(q.explain || '').trim() };
+  }
+  return cards.map(c => out[c.id]).filter(Boolean);
+}
+// 一次請求出整組題；格式不合格時自動再請模型出一次
+async function buildQuestions(ids, signal, onStatus){
+  const cards = ids.map(id => state.cards[id]).filter(Boolean);
+  const text = cards.map((c, i) => `【卡片 ${i + 1}】\nid：${c.id}\n標題：${c.title}\n內文：\n${plain(c.body).slice(0, 1500)}`).join('\n\n');
+  for (let attempt = 0; attempt < 2; attempt++){
+    onStatus(`正在請 ${modelLabel(fallbackChain()[0])} 根據 ${cards.length} 張卡片出題…`);
+    const raw = await geminiSmart({
+      systemInstruction:{ parts:[{ text:QUIZ_SYSTEM }] },
+      contents:[{ role:'user', parts:[{ text }] }],
+      generationConfig:{ responseMimeType:'application/json', temperature:0.3 }
+    }, signal, onStatus);
+    const items = validQuestions(parseCard(raw), cards);
+    if (items.length) return items;
+  }
+  throw new Error('模型連續兩次出的題目格式都有誤，請再試一次。');
+}
+
+// 測驗流程：state.qs = { scope, label, from, cards, phase:'loading'|'error'|'question'|'done', items, i, picked, results, fresh }
+function startQuiz(scope){
+  if (!state.settings.key.trim()){ state.view = 'settings'; state.sheet = null; render(); toast('請先設定 API 金鑰'); return; }
+  const pool = quizPool(scope);
+  if (!pool.length){ toast('這個範圍還沒有可以出題的卡片'); return; }
+  state.qs = { scope, label: scope ? (scope.sub || scope.cat) : '綜合測驗',
+    from:{ view:state.view, sheet:state.sheet ? Object.assign({}, state.sheet) : null },
+    cards:pickQuizCards(pool), phase:'loading', status:'', items:[], i:0, picked:null, results:[], fresh:[] };
+  state.view = 'quiz'; state.sheet = null;
+  render(); window.scrollTo(0, 0);
+  genQuiz();
+}
+async function genQuiz(){
+  const qs = state.qs;
+  if (!qs) return;
+  qs.phase = 'loading'; qs.error = ''; qs.status = ''; qs.controller = new AbortController();
+  render();
+  try{
+    const items = await buildQuestions(qs.cards, qs.controller.signal, msg => { if (state.qs === qs){ qs.status = msg; render(); } });
+    if (state.qs !== qs) return;
+    Object.assign(qs, { items, i:0, picked:null, results:[], phase:'question' });
+  }catch(e){
+    if (state.qs !== qs) return;
+    qs.phase = 'error'; qs.error = e.name === 'AbortError' ? '已取消出題。' : e.message;
+  }
+  qs.controller = null;
+  render(); window.scrollTo(0, 0);
+}
+function quitQuiz(){
+  const qs = state.qs;
+  if (!qs) return;
+  state.qs = null;
+  if (qs.controller) qs.controller.abort();
+  state.view = qs.from.view === 'quiz' ? 'explore' : qs.from.view;
+  render();
+  if (state.view === 'tree' && qs.from.sheet){ state.sheet = qs.from.sheet; renderSheet(); }
+  window.scrollTo(0, 0);
+}
+function quizPick(k){
+  const qs = state.qs, it = qs && qs.items[qs.i];
+  if (!it || qs.picked != null) return;
+  qs.picked = k;
+  const ok = k === it.answer;
+  let pts = 0, fresh = [];
+  if (ok && !state.qx.scored[it.cardId] && state.cards[it.cardId]){
+    pts = cardPts(state.cards[it.cardId]);
+    state.qx.scored[it.cardId] = { t:Date.now(), pts };
+    fresh = checkAwards();
+    qs.fresh.push(...fresh);
+  }
+  qs.results[qs.i] = { cardId:it.cardId, ok, pts, fresh };
+  persist(); render();
+  if (fresh.length) toast(`獲得${awardLabel(fresh[fresh.length - 1])}！`);
+  else if (pts) toast(`+${pts} 分`);
+}
+// 「這題有問題」：作廢、不計對錯；這題剛加的分數與因此取得的獎項一併收回，該卡之後仍可再計分
+function quizVoid(){
+  const qs = state.qs, r = qs && qs.results[qs.i];
+  if (!r || r.voided) return;
+  r.voided = true;
+  if (r.pts){ delete state.qx.scored[r.cardId]; r.pts = 0; }
+  for (const k of r.fresh) delete state.qx.awards[k];
+  qs.fresh = qs.fresh.filter(k => !r.fresh.includes(k));
+  r.fresh = [];
+  persist(); render(); toast('這題已作廢，不計分');
+}
+function quizNext(){
+  const qs = state.qs;
+  if (!qs || qs.picked == null) return;
+  if (qs.i + 1 < qs.items.length){ qs.i++; qs.picked = null; }
+  else { qs.phase = 'done'; qs.fresh.forEach(prepareAwardImage); }
+  render(); window.scrollTo(0, 0);
+}
+
+function renderQuiz(){
+  const qs = state.qs;
+  const head = `<div class="qhead"><span>${esc(qs.label)}${qs.phase === 'question' ? `・第 ${qs.i + 1}／${qs.items.length} 題` : ''}</span>
+    <button class="x" data-act="quizquit">結束測驗</button></div>`;
+  if (qs.phase === 'loading'){
+    return head + `<div class="loading" aria-live="polite"><p>${esc(qs.status || '正在準備題目…')}</p><div class="pulse"></div>
+      <button class="btn sm sec ghost" data-act="quizquit">取消</button></div>`;
+  }
+  if (qs.phase === 'error'){
+    return head + `<div class="notice" role="alert">${esc(qs.error)}
+      <div class="btns"><button class="btn sm" data-act="quizretry">再試一次</button><button class="btn sm sec" data-act="quizquit">結束測驗</button></div></div>`;
+  }
+  if (qs.phase === 'done'){
+    const rs = qs.results.filter(r => r && !r.voided);
+    const ok = rs.filter(r => r.ok).length, pts = rs.reduce((s, r) => s + (r.pts || 0), 0);
+    const awards = qs.fresh.filter(k => state.qx.awards[k]).map(k => `<div class="awrow">
+      <span class="tico ${parseAward(k).sub ? 'tierb' : 'tier' + parseAward(k).tier}">${ICONS.trophy}</span><span class="awname">${esc(awardLabel(k))}</span>
+      <button class="btn sm sec" data-act="awardshare" data-key="${esc(k)}">分享圖片</button></div>`).join('');
+    return head + `<div class="empty"><h2>答對 ${ok}／${rs.length} 題</h2>
+      <p>${pts ? `這次獲得 ${pts} 分。` : '這次沒有新增積分；每張卡只有第一次答對會計分。'}目前總積分 ${quizStats().total} 分。</p></div>
+      ${awards ? `<h2 class="section-h" style="margin-top:0">新獲得的獎項</h2><div class="rows">${awards}</div>` : ''}
+      <div class="btnrow" style="margin-top:24px"><button class="btn" data-act="quizagain">再測一次</button><button class="btn sec" data-act="quizquit">結束</button></div>`;
+  }
+  const it = qs.items[qs.i], c = state.cards[it.cardId], r = qs.results[qs.i];
+  const picked = qs.picked != null;
+  const opts = it.options.map((o, k) => {
+    const cls = !picked ? '' : k === it.answer ? ' right' : k === qs.picked ? ' wrong' : '';
+    return `<button class="qopt${cls}" data-act="quizpick" data-k="${k}" ${picked ? 'disabled' : ''}><span class="qk">${'ABCD'[k]}</span><span>${esc(o)}</span></button>`;
+  }).join('');
+  const last = qs.i + 1 >= qs.items.length;
+  const fb = picked ? `<div class="qfb ${r.voided ? '' : r.ok ? 'ok' : 'no'}">
+      <p class="qres">${r.voided ? '這題已作廢，不計對錯。' : r.ok ? (r.pts ? `答對了！+${r.pts} 分` : '答對了！（這張卡之前已經計過分）') : `答錯了，正確答案是 ${'ABCD'[it.answer]}。`}</p>
+      ${it.explain ? `<p class="qexp">${esc(it.explain)}</p>` : ''}
+      ${c ? `<details class="qsrc"><summary>看原文：${esc(c.title)}</summary><div class="body">${renderBody(c.body, 'noop')}</div></details>` : ''}
+      <div class="btnrow">${r.voided ? '' : '<button class="btn sm sec" data-act="quizvoid">這題有問題</button>'}<button class="btn sm" data-act="quiznext">${last ? '看結果' : '下一題'}</button></div></div>` : '';
+  return head + `${c ? `<p class="qfrom">出自「${esc(c.title)}」</p>` : ''}<h2 class="qq">${esc(it.q)}</h2><div class="qopts">${opts}</div>${fb}`;
+}
+
+// ---------- 獎盃圖片 ----------
+const awardImgCache = {};
+function prepareAwardImage(key){
+  const ck = key + ':' + quizStats().total;
+  if (!awardImgCache[ck]){
+    const entry = awardImgCache[ck] = { file:null, promise:null };
+    entry.promise = drawAwardImage(key).then(f => (entry.file = f), e => { delete awardImgCache[ck]; throw e; });
+    entry.promise.catch(() => {});
+  }
+  return awardImgCache[ck];
+}
+function drawEmblem(g, cx, cy, color, isBadge){
+  g.save();
+  g.fillStyle = color; g.strokeStyle = color;
+  if (isBadge){
+    g.fillStyle = '#2C5F7F';
+    g.beginPath(); g.moveTo(cx - 70, cy - 190); g.lineTo(cx - 10, cy - 190); g.lineTo(cx + 30, cy - 60); g.lineTo(cx - 30, cy - 60); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(cx + 70, cy - 190); g.lineTo(cx + 10, cy - 190); g.lineTo(cx - 30, cy - 60); g.lineTo(cx + 30, cy - 60); g.closePath(); g.fill();
+    g.fillStyle = color;
+    g.beginPath(); g.arc(cx, cy + 20, 110, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 8;
+    g.beginPath(); g.arc(cx, cy + 20, 84, 0, Math.PI * 2); g.stroke();
+  } else {
+    g.beginPath();
+    g.moveTo(cx - 115, cy - 140); g.lineTo(cx + 115, cy - 140);
+    g.bezierCurveTo(cx + 115, cy - 10, cx + 70, cy + 50, cx, cy + 50);
+    g.bezierCurveTo(cx - 70, cy + 50, cx - 115, cy - 10, cx - 115, cy - 140);
+    g.fill();
+    g.lineWidth = 20; g.lineCap = 'round';
+    g.beginPath(); g.arc(cx - 115, cy - 80, 48, Math.PI * 0.5, Math.PI * 1.5); g.stroke();
+    g.beginPath(); g.arc(cx + 115, cy - 80, 48, Math.PI * 1.5, Math.PI * 0.5); g.stroke();
+    g.fillRect(cx - 18, cy + 45, 36, 60);
+    g.beginPath(); g.roundRect(cx - 85, cy + 100, 170, 34, 8); g.fill();
+    g.beginPath(); g.roundRect(cx - 120, cy + 134, 240, 32, 8); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 10;
+    g.beginPath(); g.moveTo(cx - 70, cy - 112); g.quadraticCurveTo(cx - 74, cy - 30, cx - 30, cy + 8); g.stroke();
+  }
+  g.restore();
+}
+async function drawAwardImage(key){
+  const a = parseAward(key), isBadge = !!a.sub;
+  const st = quizStats();
+  const pts = isBadge ? (st.subPts[a.cat + '|' + a.sub] || 0) : (st.catPts[a.cat] || 0);
+  const n = isBadge ? (st.subN[a.cat + '|' + a.sub] || 0) : (st.catN[a.cat] || 0);
+  const metal = isBadge ? '#B8892B' : ['', '#A86B3C', '#8C969E', '#C2952A'][a.tier];
+  const title = isBadge ? a.sub : a.cat;
+  const label = isBadge ? `${a.cat}・子領域獎章` : `${TIER[a.tier]}獎盃`;
+  const extra = isBadge ? '' : `已取得 ${badgesIn(a.cat)}／${FIELDS[a.cat].length} 個子領域獎章`;
+  const date = new Date(state.qx.awards[key] || Date.now()).toLocaleDateString('zh-TW');
+  const stat = `答對 ${n} 個知識點・累積 ${pts} 分`;
+  const all = title + label + extra + stat + date + '取得於知識探索';
+  try{ await Promise.all([document.fonts.load('700 76px "Noto Serif TC"', all), document.fonts.load('500 32px "Noto Serif TC"', all)]); }catch{}
+  const W = 1080, H = 1080, M = 72;
+  const C = { bg:'#F5F6F4', surface:'#FFFFFF', ink:'#1F2428', muted:'#68717A', rule:'#DDE1E3', accent:'#2C5F7F' };
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  g.fillStyle = C.bg; g.fillRect(0, 0, W, H);
+  g.fillStyle = C.surface; g.strokeStyle = C.rule; g.lineWidth = 2;
+  g.beginPath(); g.roundRect(M, M, W - 2 * M, H - 2 * M, 36); g.fill(); g.stroke();
+  g.fillStyle = C.accent; g.fillRect(M + 72, M, 96, 8);
+  drawEmblem(g, W / 2, 330, metal, isBadge);
+  g.textAlign = 'center';
+  g.fillStyle = C.ink; g.font = `700 76px ${IMG_SERIF}`;
+  g.fillText(wrapPlain(g, title, W - 2 * M - 120, 1)[0], W / 2, 640);
+  g.fillStyle = metal; g.font = `700 40px ${IMG_SANS}`; g.fillText(label, W / 2, 705);
+  let y = 760;
+  if (extra){ g.fillStyle = C.muted; g.font = `400 30px ${IMG_SANS}`; g.fillText(extra, W / 2, y); y += 54; }
+  g.fillStyle = C.ink; g.font = `500 32px ${IMG_SERIF}`; g.fillText(stat, W / 2, y + 10);
+  g.fillStyle = C.muted; g.font = `400 28px ${IMG_SANS}`; g.fillText(`取得於 ${date}`, W / 2, y + 62);
+  g.fillStyle = C.accent; g.font = `700 30px ${IMG_SERIF}`; g.textAlign = 'right';
+  g.fillText('知識探索', W - M - 72, H - M - 48);
+  const blob = await new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error('toBlob')), 'image/png'));
+  return new File([blob], (awardLabel(key).replace(/[\\/:*?"<>|\s]+/g, '_') || 'award') + '.png', { type:'image/png' });
 }
 
 // 讀取分享連結：內容來自網址，一律視為不可信輸入，逐欄位檢查並限制長度
@@ -1712,6 +2071,7 @@ const ICONS = {
   share:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11M8 7.3l4-3.8 4 3.8"/><path d="M8.5 10.5H6.8a1.3 1.3 0 0 0-1.3 1.3v7.4a1.3 1.3 0 0 0 1.3 1.3h10.4a1.3 1.3 0 0 0 1.3-1.3v-7.4a1.3 1.3 0 0 0-1.3-1.3h-1.7"/></svg>',
   doubt:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle class="fillable" cx="12" cy="12" r="9.2"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.3c-.7.3-1.2.9-1.2 1.7v.6"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>'
 };
+ICONS.trophy = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 4h9v4.5a4.5 4.5 0 0 1-9 0z"/><path d="M7.5 6H5a2.6 2.6 0 0 0 2.8 3.6M16.5 6H19a2.6 2.6 0 0 1-2.8 3.6"/><path d="M12 13v3.6M8.5 20h7M9.8 20l.6-3.4h3.2l.6 3.4"/></svg>';
 const NAV = [['explore','探索'],['tree','知識樹'],['library','收藏'],['settings','設定']];
 function renderNav(){
   $('#nav').innerHTML = NAV.map(([v, l]) =>
@@ -1812,13 +2172,40 @@ function renderExplore(){
     <p>每次會從你在設定中選的領域隨機挑一個知識點。點畫底線的名詞，就能繼續往下探索。</p></div>`;
 }
 
+// 收藏頁上方的成就區：總積分、各大領域獎盃與子領域獎章進度、綜合測驗入口
+function renderAchievements(){
+  const st = quizStats();
+  const canQuiz = quizPool(null).length > 0;
+  const sel = state.awardSel && state.qx.awards[state.awardSel] ? state.awardSel : null;
+  const shareRow = k => sel === k ? `<div class="awsel">取得於 ${new Date(state.qx.awards[k]).toLocaleDateString('zh-TW')}
+    <button class="btn sm sec" data-act="awardshare" data-key="${esc(k)}">分享圖片</button></div>` : '';
+  const blocks = Object.entries(FIELDS).filter(([cat]) => st.catPts[cat] || tierOf(cat)).map(([cat, subs]) => {
+    const tier = tierOf(cat), n = badgesIn(cat);
+    const tk = tier ? trophyKey(cat, tier) : '';
+    const head = `<span class="tico tier${tier}">${ICONS.trophy}</span><span>${esc(cat)}${tier ? ` ${TIER[tier]}獎盃` : ''}</span>
+      <span class="s">獎章 ${n}／${subs.length}・${st.catPts[cat] || 0} 分</span>`;
+    const chips = subs.filter(s => st.subPts[cat + '|' + s] || state.qx.awards[badgeKey(cat, s)]).map(s => {
+      const k = badgeKey(cat, s), got = !!state.qx.awards[k];
+      return got ? `<button class="chip earned" data-act="awardsel" data-key="${esc(k)}" aria-pressed="${sel === k}">${esc(s)}・獎章</button>`
+        : `<span class="chip">${esc(s)} ${st.subPts[cat + '|' + s] || 0}／${QUIZ_BADGE}</span>`;
+    }).join('');
+    const selHere = sel && parseAward(sel).cat === cat ? shareRow(sel) : '';
+    return `<div class="ach">${tier ? `<button class="achhead" data-act="awardsel" data-key="${esc(tk)}" aria-pressed="${sel === tk}">${head}</button>` : `<div class="achhead">${head}</div>`}
+      ${chips ? `<div class="chips">${chips}</div>` : ''}${selHere}</div>`;
+  }).join('');
+  return `<h2 class="section-h" style="margin-top:8px">成就</h2>
+    <p class="achsum">總積分 <b>${st.total}</b>・已答對 ${st.count} 個知識點</p>
+    <button class="btn" data-act="quizstart" data-scope="all" ${canQuiz ? '' : 'disabled'}>綜合測驗</button>
+    ${blocks ? `<div class="achlist">${blocks}</div>` : `<p class="hint" style="color:var(--muted);font-size:14.5px">每張卡片第一次答對會依難度得 1 到 5 分，子領域累積 ${QUIZ_BADGE} 分得獎章；大領域依獎章數得銅、銀、金獎盃。也可以在知識樹的分支面板按「測驗這個分支」。</p>`}`;
+}
+
 function renderLibrary(){
   const row = c => `<button class="row" data-act="open" data-id="${c.id}">
     <div class="r1"><span class="t serif">${esc(c.title)}</span>${c.doubt ? '<span class="s" style="color:var(--warn)">存疑</span>' : ''}</div>
     <div class="b">${esc(c.field || '')}${c.field ? '，' : ''}${fmtDate(c.createdAt)}</div></button>`;
   const saved = state.saved.map(id => state.cards[id]).filter(Boolean).reverse();
   const recent = Object.values(state.cards).sort((a, b) => b.createdAt - a.createdAt).slice(0, 30);
-  return `<h2 class="section-h" style="margin-top:8px">收藏（${saved.length}）</h2>
+  return renderAchievements() + `<h2 class="section-h">收藏（${saved.length}）</h2>
     ${saved.length ? `<div class="rows">${saved.map(row).join('')}</div>` : '<p class="hint" style="color:var(--muted);font-size:14.5px">在知識點頁面按「收藏」，就會出現在這裡。</p>'}
     <h2 class="section-h">最近看過</h2>
     ${recent.length ? `<div class="rows">${recent.map(row).join('')}</div>` : '<p style="color:var(--muted);font-size:14.5px">還沒有紀錄。</p>'}`;
@@ -1917,10 +2304,10 @@ function buildTree(){
   const cats = Object.keys(FIELDS);
   if (cards.some(c => catOf(c) === '未分類')) cats.push('未分類');
   cats.forEach((cat, i) => {
-    const cn = { type:'cat', name:cat, cat, hue: Math.round(i * 360 / 16), sat: FIELDS[cat] ? '45%' : '0%', children:[] };
+    const cn = { type:'cat', name:cat, cat, hue: Math.round(i * 360 / 16), sat: FIELDS[cat] ? '45%' : '0%', tier: FIELDS[cat] ? tierOf(cat) : 0, children:[] };
     catNodes[cat] = cn; root.children.push(cn);
     (FIELDS[cat] || []).forEach(sub => {
-      const sn = { type:'sub', name:sub, cat, sub, children:[] };
+      const sn = { type:'sub', name:sub, cat, sub, badge: !!state.qx.awards[badgeKey(cat, sub)], children:[] };
       subNodes[cat + '|' + sub] = sn; cn.children.push(sn);
     });
   });
@@ -1972,11 +2359,13 @@ function drawMap(){
     .attr('style', d => tone(d.target))
     .attr('d', d3.linkRadial().angle(d => d.x).radius(d => d.y));
   const node = g.append('g').selectAll('g').data(root.descendants()).join('g')
-    .attr('class', d => `node ${d.data.type}${d.cards || d.depth === 0 ? '' : ' off'}${d.data.saved ? ' saved' : ''}`)
+    .attr('class', d => `node ${d.data.type}${d.cards || d.depth === 0 ? '' : ' off'}${d.data.saved ? ' saved' : ''}${d.data.tier ? ' tier' + d.data.tier : ''}${d.data.badge ? ' badged' : ''}`)
     .attr('style', tone)
     .attr('transform', d => `rotate(${deg(d)}) translate(${d.y},0)`)
     .on('click', (e, d) => { e.stopPropagation(); onNode(d); });
   node.append('circle').attr('class', 'hit').attr('r', d => d.depth === 0 ? 44 : 14);
+  // 已取得的子領域獎章、大領域獎盃：節點外加一圈金屬色環
+  node.filter(d => d.data.tier || d.data.badge).append('circle').attr('class', 'award').attr('r', d => d.data.type === 'cat' ? 12 : 8.5);
   node.append('circle').attr('class', 'dot')
     .attr('r', d => ({ root:40, cat:7, sub:4.5, card:4 })[d.data.type] + (d.data.saved ? 1 : 0));
   node.append('text')
@@ -2036,6 +2425,21 @@ function onNode(d){
   renderSheet();
 }
 
+// 分支面板裡的測驗入口與進度
+function quizSheetLine(scope){
+  const st = quizStats(), n = quizPool(scope).length;
+  let line;
+  if (scope.sub){
+    const got = state.qx.awards[badgeKey(scope.cat, scope.sub)];
+    line = `測驗積分 ${st.subPts[scope.cat + '|' + scope.sub] || 0}／${QUIZ_BADGE}${got ? '・已取得獎章' : ''}`;
+  } else {
+    const tier = tierOf(scope.cat);
+    line = `子領域獎章 ${badgesIn(scope.cat)}／${FIELDS[scope.cat].length}${tier ? `・${TIER[tier]}獎盃` : ''}・${st.catPts[scope.cat] || 0} 分`;
+  }
+  return `<p class="qline">${line}</p>
+    <button class="btn sec go" data-act="quizstart" data-cat="${esc(scope.cat)}" data-sub="${esc(scope.sub || '')}" ${n ? '' : 'disabled'}>${n ? `測驗這個分支（${Math.min(n, QUIZ_SIZE)} 題）` : '測驗這個分支（還沒有可出題的卡片）'}</button>`;
+}
+
 function renderSheet(){
   const el = $('#sheet');
   const sh = state.sheet;
@@ -2054,7 +2458,8 @@ function renderSheet(){
     const list = cards.filter(c => c.sub === sh.sub).sort((a, b) => b.createdAt - a.createdAt);
     head = sh.sub;
     sub = `${sh.cat}，已學 ${list.length} 個知識點，目前難度：${levelFor(sh.cat)}`;
-    go = `<button class="btn go" data-act="branch" data-cat="${esc(sh.cat)}" data-sub="${esc(sh.sub)}">在這個分支學一個新的</button>`;
+    go = `<button class="btn go" data-act="branch" data-cat="${esc(sh.cat)}" data-sub="${esc(sh.sub)}">在這個分支學一個新的</button>`
+      + quizSheetLine({ cat:sh.cat, sub:sh.sub });
     rows = list.map(cardRow).join('');
   } else if (!FIELDS[sh.cat]){
     head = sh.cat; sub = `${cards.length} 個無法判斷領域的舊卡片`;
@@ -2066,9 +2471,10 @@ function renderSheet(){
     sub = `已學 ${cards.length} 個知識點，觸及 ${subs.filter(count).length}／${subs.length} 個子領域`;
     const bias = state.bias[sh.cat] || 0;
     go = `<div class="lvline"><span>目前難度：<b>${levelFor(sh.cat)}</b>${bias ? `（預設 ${LEVELS[baseIdx()]}）` : ''}</span>${bias ? `<button data-act="biasreset" data-cat="${esc(sh.cat)}">恢復預設</button>` : ''}</div>
-      <button class="btn go" data-act="branch" data-cat="${esc(sh.cat)}" data-sub="">從這個領域隨機學一個</button>`;
+      <button class="btn go" data-act="branch" data-cat="${esc(sh.cat)}" data-sub="">從這個領域隨機學一個</button>`
+      + quizSheetLine({ cat:sh.cat, sub:null });
     rows = subs.map(s => `<button class="row" data-act="sheetsub" data-cat="${esc(sh.cat)}" data-sub="${esc(s)}">
-      <div class="r1"><span class="t">${esc(s)}</span><span class="s">${count(s) ? `已學 ${count(s)} 個` : '尚未探索'}</span></div></button>`).join('');
+      <div class="r1"><span class="t">${esc(s)}</span><span class="s">${count(s) ? `已學 ${count(s)} 個` : '尚未探索'}</span>${state.qx.awards[badgeKey(sh.cat, s)] ? '<span class="s gold">獎章</span>' : ''}</div></button>`).join('');
   }
   el.innerHTML = `<div class="sheet-in">
     <div class="sheet-h"><div><h3>${esc(head)}</h3><p class="sub">${sub}</p></div>
@@ -2142,7 +2548,8 @@ function render(){
   document.documentElement.style.setProperty('--hh', $('.bar').offsetHeight + 'px');
   document.body.classList.toggle('maponly', tree);
   main.className = tree ? 'mapwrap' : 'wrap';
-  main.innerHTML = tree ? renderTree() : state.view === 'shared' && state.shared ? renderShared()
+  if (state.view === 'quiz' && !state.qs) state.view = 'explore';
+  main.innerHTML = tree ? renderTree() : state.view === 'quiz' ? renderQuiz() : state.view === 'shared' && state.shared ? renderShared()
     : state.view === 'library' ? renderLibrary() : state.view === 'settings' ? renderSettings() : renderExplore();
   // 預先產生分享連結，讓點擊時能立即叫出分享選單（iOS 需要在點擊當下呼叫）
   const sc = state.view === 'explore' && current();
@@ -2163,7 +2570,26 @@ document.addEventListener('click', e => {
   const act = el.dataset.act;
   const c = current();
   switch (act){
-    case 'view': if (state.view === 'shared') closeShared(); state.view = el.dataset.view; render(); window.scrollTo(0, 0); break;
+    case 'view':
+      if (state.view === 'shared') closeShared();
+      if (state.qs){ const qs = state.qs; state.qs = null; if (qs.controller) qs.controller.abort(); }
+      state.view = el.dataset.view; render(); window.scrollTo(0, 0); break;
+    case 'quizstart': startQuiz(el.dataset.scope === 'all' ? null : { cat:el.dataset.cat, sub:el.dataset.sub || null }); break;
+    case 'quizpick': quizPick(Number(el.dataset.k)); break;
+    case 'quizvoid': quizVoid(); break;
+    case 'quiznext': quizNext(); break;
+    case 'quizretry': genQuiz(); break;
+    case 'quizquit': quitQuiz(); break;
+    case 'quizagain': { const scope = state.qs && state.qs.scope, from = state.qs && state.qs.from; state.qs = null;
+      if (from){ state.view = from.view; state.sheet = from.sheet; }
+      startQuiz(scope);
+      if (state.view !== 'quiz') render();
+      break; }
+    case 'awardsel':
+      state.awardSel = state.awardSel === el.dataset.key ? null : el.dataset.key;
+      if (state.awardSel) prepareAwardImage(state.awardSel);
+      render(); break;
+    case 'awardshare': deliverImage(prepareAwardImage(el.dataset.key), awardLabel(el.dataset.key)); break;
     case 'new': newPoint(); break;
     case 'term':
       if (state.view === 'shared' && state.shared){
