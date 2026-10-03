@@ -1,0 +1,31 @@
+name: 回報卡片或題目錯誤
+description: 共用卡片庫的內容有誤、測驗題有誤，或與來源不符
+title: "回報："
+labels: ["回報"]
+body:
+  - type: markdown
+    attributes:
+      value: 感謝回報！管理者確認後會在這個 Issue 加上「下架」標籤，該卡片會在下一次每日更新時從卡片庫移除。
+  - type: input
+    id: card
+    attributes:
+      label: 卡片 ID
+      description: 從網站按「回報」會自動填入，例如 L20261005-07
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 問題類型
+      options:
+        - 內容錯誤
+        - 測驗題錯誤
+        - 與來源不符
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: detail
+    attributes:
+      label: 說明
+      description: 哪裡有誤？正確的內容或依據是什麼？

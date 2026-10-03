@@ -203,6 +203,12 @@ body.maponly{overflow:hidden;overscroll-behavior:none}
 .mapsvg .node.tier1 .award{stroke:var(--bronze)}
 .mapsvg .node.tier2 .award{stroke:var(--silver)}
 
+/* 卡片庫 */
+.report{font-size:13px;margin:10px 0 0}
+.report a{color:var(--muted)}
+.notice a{color:var(--accent)}
+a.btn{text-decoration:none;display:inline-block}
+
 /* 測驗與成就 */
 .qline{font-size:13.5px;color:var(--muted);margin:6px 0 4px}
 .row .s.gold{color:var(--gold);font-weight:600}
@@ -997,8 +1003,8 @@ async function wikiArticle(title, signal, badge){
     sources:[{ title:`Wikipedia：${name}`, author: badge || '', year:'', url: page.fullurl || `https://en.wikipedia.org/wiki/${encodeURIComponent(name.replace(/ /g, '_'))}` }] };
 }
 // 隨機挑選：優先選維基百科評定的優良、典範條目
-async function wikiPick(subEn, signal){
-  const seen = seenKeys();
+async function wikiPick(subEn, signal, seenSet){
+  const seen = seenSet || seenKeys();
   let badge = '典範或優良條目';
   let titles = await wikiSearch(`${subEn} incategory:Featured_articles|Good_articles`, 50, signal);
   if (titles.filter(t => !seen.has('wiki:' + t)).length < 3){ badge = ''; titles = await wikiSearch(subEn, 50, signal); }
@@ -1055,8 +1061,8 @@ async function oaHighImpact(works, signal){
   const kept = works.filter(w => (m[String(w.primary_location.source.id).split('/').pop()] || 0) >= median);
   return kept.length ? kept : works;
 }
-async function paperPick(subEn, recent, signal){
-  const seen = seenKeys();
+async function paperPick(subEn, recent, signal, seenSet){
+  const seen = seenSet || seenKeys();
   const works = await oaHighImpact(await oaWorks(subEn, recent, 50, signal), signal);
   const fresh = works.filter(w => !seen.has('oa:' + String(w.id).split('/').pop())).slice(0, 15);
   if (!fresh.length) throw new Error(`在 OpenAlex 找不到「${subEn}」${recent ? '近三年' : ''}適合的新論文，請再按一次換個領域。`);
@@ -1123,14 +1129,14 @@ ${level}
 ${info}`;
 }
 
-async function getSource(mode, query, signal, status, isTerm){
+async function getSource(mode, query, signal, status, isTerm, seenSet){
   if (mode === 'wiki'){
     status(isTerm ? `正在英文維基百科查詢「${query}」…` : '正在從英文維基百科挑選條目…');
-    return isTerm ? wikiLookup(query, signal) : wikiPick(query, signal);
+    return isTerm ? wikiLookup(query, signal) : wikiPick(query, signal, seenSet);
   }
   const recent = mode === 'recent';
   status(recent ? '正在從 OpenAlex 挑選近三年的高被引論文…' : '正在從 OpenAlex 挑選高被引代表論文…');
-  return isTerm ? paperLookup(query, recent, signal) : paperPick(query, recent, signal);
+  return isTerm ? paperLookup(query, recent, signal) : paperPick(query, recent, signal, seenSet);
 }
 
 function pickField(){
@@ -1143,27 +1149,19 @@ function sourcedExtra(src, mode){
   return { srcType: mode, srcKey: src.key, sources: src.sources };
 }
 
-async function newPoint(opts = {}){
-  const { cat, sub } = opts.cat && FIELDS[opts.cat]
-    ? { cat: opts.cat, sub: opts.sub && FIELDS[opts.cat].includes(opts.sub) ? opts.sub : pick(FIELDS[opts.cat]) }
-    : pickField();
-  const lv = levelFor(cat);
+// 產生一張知識點卡片：找來源 → 請模型依原文撰寫 → 分類校正 → normalize。
+// 網頁的 newPoint 與卡片庫產生腳本（#kx-build）共用這一份管線。
+// onSource 在找到來源後立即呼叫，讓撰寫失敗時「再試一次」能沿用同一個來源。
+async function makePoint({ cat, sub, lv, src, seen, signal, status, onSource }){
   const mode = modeFor(lv);
-  // 撰寫失敗時，「再試一次」沿用已經找到的來源，只重新請模型撰寫
-  let found = opts.src && opts.mode === mode ? opts.src : null;
-  const r = await run(async (signal, status) => {
-    const src = found || await getSource(mode, SUB_EN[sub] || sub, signal, status, false);
-    found = src;
-    status(`正在請 ${modelLabel(fallbackChain()[0])} 根據來源撰寫…`);
-    const obj = await callGemini(sourcePrompt(src, lv, { cat, sub }), signal, status);
-    return { obj, src };
-  }, `正在從「${sub}」挑選知識點`, () => newPoint(found ? { cat, sub, src:found, mode } : opts));
-  if (!r) return;
-  
+  src = src || await getSource(mode, SUB_EN[sub] || sub, signal, status, false, seen);
+  if (onSource) onSource(src);
+  status(`正在請 ${modelLabel(fallbackChain()[0])} 根據來源撰寫…`);
+  const obj = await callGemini(sourcePrompt(src, lv, { cat, sub }), signal, status);
+
   // ✅ 驗證並修正分類
-  let obj = r.obj;
   const [returnedCat, returnedSub] = (obj.field || '').split('／');
-  
+
   if (!FIELDS[returnedCat] || !FIELDS[returnedCat].includes(returnedSub)) {
     // Gemini 填錯了，用我們決定的分類覆蓋
     obj.field = `${cat}／${sub}`;
@@ -1171,17 +1169,144 @@ async function newPoint(opts = {}){
     obj.sub = sub;
     toast(`分類已校正為「${cat}／${sub}」`);
   }
-  
-  const card = normalize(obj, Object.assign({ kind:'point', parentId:null, cat, sub, level:lv }, sourcedExtra(r.src, mode)));
+
+  return normalize(obj, Object.assign({ kind:'point', parentId:null, cat, sub, level:lv }, sourcedExtra(src, mode)));
+}
+
+// 抽卡：先從共用卡片庫找還沒讀過的卡（不耗額度）；沒有合適的卡時，有金鑰才即時產生
+async function newPoint(opts = {}){
+  if (state.loading) return;
+  if (!opts.src && !opts.noLib){
+    const hit = await run(() => libPick(opts), '正在從卡片庫挑選知識點…', () => newPoint(opts));
+    if (hit){ useLibCard(hit); return; }
+    if (state.error) return;
+    if (!hasKey()){
+      state.error = opts.sub
+        ? `卡片庫裡「${opts.sub}」符合你目前難度的卡片都讀完了。可以換個分支，或設定自己的 Gemini 金鑰無限探索。`
+        : '卡片庫裡符合你目前領域與難度設定的卡片都讀完了。可以到設定調整領域或難度，或設定自己的 Gemini 金鑰無限探索；卡片庫每天都會新增。';
+      state.retry = null; render(); return;
+    }
+  }
+  const { cat, sub } = opts.cat && FIELDS[opts.cat]
+    ? { cat: opts.cat, sub: opts.sub && FIELDS[opts.cat].includes(opts.sub) ? opts.sub : pick(FIELDS[opts.cat]) }
+    : pickField();
+  const lv = levelFor(cat);
+  const mode = modeFor(lv);
+  // 撰寫失敗時，「再試一次」沿用已經找到的來源，只重新請模型撰寫
+  let found = opts.src && opts.mode === mode ? opts.src : null;
+  const card = await run((signal, status) => makePoint({ cat, sub, lv, src:found, signal, status, onSource: s => { found = s; } }),
+    `正在從「${sub}」挑選知識點`, () => newPoint(found ? { cat, sub, src:found, mode } : Object.assign({}, opts, { noLib:true })));
+  if (!card) return;
   addCard(card);
   state.seen.push(card.title);
   state.path = [card.id];
   persist(); render(); window.scrollTo(0, 0);
 }
 
+// ---------- 共用卡片庫（library/，由 GitHub Actions 每天產生，與網站同網域） ----------
+const REPO_URL = 'https://github.com/frogjason0214/Smarter.gemini';
+const hasKey = () => !!state.settings.key.trim();
+const lib = { index:null, days:{}, removed:null };
+async function libFetch(path){
+  const res = await fetch('library/' + path, { cache:'no-cache' });
+  if (!res.ok) throw new Error('library ' + res.status);
+  return res.json();
+}
+function libIndex(){
+  if (!lib.index){
+    lib.index = libFetch('index.json')
+      .then(d => d && d.v === 1 && Array.isArray(d.days) ? d : { v:1, days:[] })
+      .catch(() => { lib.index = null; return { v:1, days:[] }; });
+  }
+  return lib.index;
+}
+const libFileOf = id => { const m = /^L(\d{4})(\d{2})(\d{2})-\d+$/.exec(id || ''); return m ? `${m[1]}-${m[2]}-${m[3]}.json` : ''; };
+// 卡片庫雖來自自己的 repo，仍逐欄位檢查與限長，和分享內容同樣處理
+function sanitizeLibCard(c){
+  if (!c || !/^L\d{8}-\d{1,4}$/.test(String(c.id)) || !c.title || !c.body || !FIELDS[c.cat]) return null;
+  const arr = v => Array.isArray(v) ? v : [];
+  return {
+    id:String(c.id), kind:'point', parentId:null, lib:true,
+    title:str(c.title, 200), english:str(c.english, 200), field:str(c.field, 80),
+    cat:c.cat, sub: FIELDS[c.cat].includes(c.sub) ? c.sub : null,
+    level: LEVELS.includes(c.level) ? c.level : '',
+    srcType: MODE_LABEL[c.srcType] ? c.srcType : '', srcKey: str(c.srcKey, 300),
+    body:str(c.body, 20000), consensus:str(c.consensus, 1000),
+    terms: arr(c.terms).slice(0, 12).filter(t => t && t.term)
+      .map(t => ({ term:str(t.term, 80), english:str(t.english, 120), brief:str(t.brief, 200) })),
+    sources: arr(c.sources).slice(0, 6).filter(s => s && s.title).map(s => ({
+      title:str(s.title, 300), author:str(s.author, 200), year:str(s.year, 10), venue:str(s.venue, 200),
+      cited: Number.isFinite(Number(s.cited)) ? Number(s.cited) : 0, url: safeUrl(s.url) })),
+    model: MODELS.some(m => m.id === c.model) ? c.model : '',
+    questions: arr(c.questions).slice(0, 3).filter(q => q && q.q && Array.isArray(q.options) && q.options.length === 4
+      && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4)
+      .map(q => ({ q:str(q.q, 500), options:q.options.map(o => str(o, 300)), answer:q.answer, explain:str(q.explain, 800) })),
+    doubt:false
+  };
+}
+function libDay(file){
+  if (!/^\d{4}-\d{2}-\d{2}\.json$/.test(file)) return Promise.resolve([]);
+  if (!lib.days[file]){
+    lib.days[file] = libFetch(file)
+      .then(d => (d && d.v === 1 && Array.isArray(d.cards) ? d.cards : []).map(sanitizeLibCard).filter(Boolean))
+      .catch(() => { delete lib.days[file]; return []; });
+  }
+  return lib.days[file];
+}
+// 依各大領域目前的難度（與指定的子領域），從卡片庫隨機挑一張還沒讀過的卡
+async function libPick(opts = {}){
+  const idx = await libIndex();
+  const cats = opts.cat && FIELDS[opts.cat] ? [opts.cat] : (state.settings.fields.length ? state.settings.fields : Object.keys(FIELDS));
+  const want = new Set(cats.map(c => c + '|' + levelFor(c)));
+  const seen = seenKeys();
+  const days = shuffle(idx.days.filter(d => d && d.by && Object.keys(d.by).some(k => want.has(k))));
+  for (const d of days.slice(0, opts.sub ? 12 : 6)){
+    const cand = (await libDay(d.file)).filter(c => want.has(c.cat + '|' + c.level) && (!opts.sub || c.sub === opts.sub)
+      && !state.cards[c.id] && !state.deleted[c.id] && !(lib.removed && lib.removed[c.id]) && !(c.srcKey && seen.has(c.srcKey)));
+    if (cand.length) return pick(cand);
+  }
+  return null;
+}
+function useLibCard(c){
+  const card = Object.assign({}, c, { createdAt:Date.now() });
+  addCard(card);
+  state.seen.push(card.title);
+  state.path = [card.id];
+  persist(); render(); window.scrollTo(0, 0);
+}
+// 下架清單：本機已讀過的下架卡片加上標記，不再出測驗題；積分與獎項保留
+async function libRemoved(){
+  try{
+    const d = await libFetch('removed.json');
+    if (!d || d.v !== 1 || !d.items || typeof d.items !== 'object') return;
+    lib.removed = d.items;
+    let changed = false;
+    for (const [id, r] of Object.entries(d.items)){
+      const c = state.cards[id];
+      if (!c || c.removed) continue;
+      c.removed = { t: Number(r && r.t) || Date.now(), issue: Number.isInteger(r && r.issue) ? r.issue : null };
+      c.updatedAt = Date.now(); changed = true;
+    }
+    if (changed){ persist(); safeRender(); }
+  }catch{}
+}
+// 回報錯誤：開啟預填好的 GitHub Issue（使用 .github/ISSUE_TEMPLATE/report.yml）
+function reportUrl(c, detail){
+  const q = new URLSearchParams({ template:'report.yml', title:`回報：${c.title}`.slice(0, 120), card:c.id });
+  if (detail) q.set('detail', detail.slice(0, 1500));
+  return `${REPO_URL}/issues/new?${q}`;
+}
+// 需要自己金鑰的功能：在探索頁顯示提示與前往設定的按鈕
+function needKey(what){
+  state.keyNeed = what;
+  if (state.view !== 'explore'){ state.view = 'explore'; state.sheet = null; }
+  render(); window.scrollTo(0, 0);
+}
+
 async function openTerm(term, english){
   const existing = state.termIndex[term];
   if (existing && state.cards[existing]){ goTo(existing); return; }
+  if (!hasKey()){ needKey('展開延伸名詞'); return; }
   const parent = current();
   const lv = levelFor(parent ? parent.cat : '');
   const mode = modeFor(lv);
@@ -1210,6 +1335,19 @@ async function openTerm(term, english){
 // 重新產生被精簡的舊卡片：有來源紀錄的，回到同一個來源重新摘要
 async function regen(c){
   if (!c) return;
+  // 卡片庫的卡：直接從卡片庫取回原本的內容，不需要金鑰
+  if (c.lib){
+    const orig = await run(async () => (await libDay(libFileOf(c.id))).find(x => x.id === c.id) || null, '正在從卡片庫取回內容…', () => regen(c));
+    const target = state.cards[c.id];
+    if (orig && target){
+      Object.assign(target, { body:orig.body, terms:orig.terms, sources:orig.sources, consensus:orig.consensus, questions:orig.questions });
+      delete target.stub; target.updatedAt = Date.now();
+      persist(); render(); return;
+    }
+    if (!state.error && !hasKey()){ state.error = '卡片庫裡已經找不到這張卡片的內容（可能已下架）。'; render(); return; }
+    if (state.error) return;
+  }
+  if (!hasKey()){ needKey('重新產生內容'); return; }
   const lv = c.level || levelFor(c.cat);
   const parent = state.cards[c.parentId];
   const r = await run(async (signal, status) => {
@@ -1738,9 +1876,11 @@ function checkAwards(){
   return fresh;
 }
 
-// 可出題的卡：有內文、未被精簡、有大領域分類（未分類不出題）
+// 可出題的卡：有內文、未被精簡、有大領域分類（未分類不出題）、未下架；
+// 沒有金鑰時，只有附預存題目的卡（卡片庫的卡）能出題
 function quizPool(scope){
-  return Object.values(state.cards).filter(c => !c.stub && c.body && FIELDS[c.cat]
+  return Object.values(state.cards).filter(c => !c.stub && c.body && FIELDS[c.cat] && !c.removed
+    && (hasKey() || (c.questions && c.questions.length))
     && (!scope || (c.cat === scope.cat && (!scope.sub || c.sub === scope.sub))));
 }
 // 優先挑還沒計分的卡，不足再用已計分的補（只當複習）
@@ -1777,9 +1917,20 @@ function validQuestions(obj, cards){
   }
   return cards.map(c => out[c.id]).filter(Boolean);
 }
+// 出題：有預存題目的卡（卡片庫）直接用、不耗額度；其餘的卡有金鑰才一次送 Gemini 出題
+async function buildQuestions(cards, signal, onStatus){
+  const pre = cards.filter(c => c.questions && c.questions.length);
+  const preItems = validQuestions({ questions: pre.map(c => Object.assign({ id:c.id }, pick(c.questions))) }, pre);
+  const need = hasKey() ? cards.filter(c => !preItems.some(it => it.cardId === c.id)) : [];
+  const genItems = need.length
+    ? await askQuestions(need, signal, onStatus).catch(e => { if (!preItems.length || e.name === 'AbortError') throw e; return []; })
+    : [];
+  const items = cards.map(c => preItems.find(it => it.cardId === c.id) || genItems.find(it => it.cardId === c.id)).filter(Boolean);
+  if (!items.length) throw new Error('這些卡片目前無法出題。');
+  return items;
+}
 // 一次請求出整組題；格式不合格時自動再請模型出一次
-async function buildQuestions(ids, signal, onStatus){
-  const cards = ids.map(id => state.cards[id]).filter(Boolean);
+async function askQuestions(cards, signal, onStatus){
   const text = cards.map((c, i) => `【卡片 ${i + 1}】\nid：${c.id}\n標題：${c.title}\n內文：\n${plain(c.body).slice(0, 1500)}`).join('\n\n');
   for (let attempt = 0; attempt < 2; attempt++){
     onStatus(`正在請 ${modelLabel(fallbackChain()[0])} 根據 ${cards.length} 張卡片出題…`);
@@ -1796,9 +1947,8 @@ async function buildQuestions(ids, signal, onStatus){
 
 // 測驗流程：state.qs = { scope, label, from, cards, phase:'loading'|'error'|'question'|'done', items, i, picked, results, fresh }
 function startQuiz(scope){
-  if (!state.settings.key.trim()){ state.view = 'settings'; state.sheet = null; render(); toast('請先設定 API 金鑰'); return; }
   const pool = quizPool(scope);
-  if (!pool.length){ toast('這個範圍還沒有可以出題的卡片'); return; }
+  if (!pool.length){ toast(hasKey() ? '這個範圍還沒有可以出題的卡片' : '這個範圍還沒有卡片庫的卡片；沒有金鑰時只能測驗卡片庫的卡片'); return; }
   state.qs = { scope, label: scope ? (scope.sub || scope.cat) : '綜合測驗',
     from:{ view:state.view, sheet:state.sheet ? Object.assign({}, state.sheet) : null },
     cards:pickQuizCards(pool), phase:'loading', status:'', items:[], i:0, picked:null, results:[], fresh:[] };
@@ -1812,7 +1962,7 @@ async function genQuiz(){
   qs.phase = 'loading'; qs.error = ''; qs.status = ''; qs.controller = new AbortController();
   render();
   try{
-    const items = await buildQuestions(qs.cards, qs.controller.signal, msg => { if (state.qs === qs){ qs.status = msg; render(); } });
+    const items = await buildQuestions(qs.cards.map(id => state.cards[id]).filter(Boolean), qs.controller.signal, msg => { if (state.qs === qs){ qs.status = msg; render(); } });
     if (state.qs !== qs) return;
     Object.assign(qs, { items, i:0, picked:null, results:[], phase:'question' });
   }catch(e){
@@ -1902,7 +2052,8 @@ function renderQuiz(){
       <p class="qres">${r.voided ? '這題已作廢，不計對錯。' : r.ok ? (r.pts ? `答對了！+${r.pts} 分` : '答對了！（這張卡之前已經計過分）') : `答錯了，正確答案是 ${'ABCD'[it.answer]}。`}</p>
       ${it.explain ? `<p class="qexp">${esc(it.explain)}</p>` : ''}
       ${c ? `<details class="qsrc"><summary>看原文：${esc(c.title)}</summary><div class="body">${renderBody(c.body, 'noop')}</div></details>` : ''}
-      <div class="btnrow">${r.voided ? '' : '<button class="btn sm sec" data-act="quizvoid">這題有問題</button>'}<button class="btn sm" data-act="quiznext">${last ? '看結果' : '下一題'}</button></div></div>` : '';
+      <div class="btnrow">${r.voided ? '' : '<button class="btn sm sec" data-act="quizvoid">這題有問題</button>'}${c && c.lib
+        ? `<a class="btn sm sec" href="${esc(reportUrl(c, `測驗題：${it.q}\n選項：${it.options.join('／')}\n標示的正確答案：${it.options[it.answer]}`))}" target="_blank" rel="noopener noreferrer">回報</a>` : ''}<button class="btn sm" data-act="quiznext">${last ? '看結果' : '下一題'}</button></div></div>` : '';
   return head + `${c ? `<p class="qfrom">出自「${esc(c.title)}」</p>` : ''}<h2 class="qq">${esc(it.q)}</h2><div class="qopts">${opts}</div>${fb}`;
 }
 
@@ -2134,8 +2285,11 @@ function renderCard(c, opts = {}){
       ${c.model ? `<span class="lv">由 ${esc(modelLabel(c.model))} 撰寫</span>` : ''}
       ${opts.shared && c.createdAt ? `<span class="lv">產生於 ${new Date(c.createdAt).toLocaleDateString('zh-TW')}</span>` : ''}
       ${c.sharedFrom ? `<span class="lv">來自分享</span>` : ''}
+      ${c.lib ? `<span class="lv">來自卡片庫</span>` : ''}
       ${c.doubt ? '<span class="flag">已標記存疑</span>' : ''}
     </div>
+    ${c.removed ? `<div class="notice" role="note">這張卡片已從共用卡片庫下架，內容可能有誤，請以原始來源為準；它不會再出現在測驗中。${Number.isInteger(c.removed.issue)
+      ? ` <a href="${REPO_URL}/issues/${c.removed.issue}" target="_blank" rel="noopener noreferrer">下架原因</a>` : ''}</div>` : ''}
     <h1 class="title">${esc(c.title)}</h1>
     <div class="body">${renderBody(c.body, opts.sheet ? 'sheetterm' : 'term')}</div>
     ${c.consensus ? `<p class="why"><b>${c.srcType === 'recent' ? '證據程度' : '為何可信'}：</b>${esc(c.consensus)}</p>` : ''}
@@ -2143,18 +2297,18 @@ function renderCard(c, opts = {}){
       ? `<button class="sharebtn" data-act="share" aria-label="分享這張卡片" aria-expanded="false" title="分享這張卡片">${ICONS.share}</button>` : ''}</div>
     ${!opts.shared && !opts.sheet && isShareable(c) ? `<div class="sharemenu" id="sharemenu" hidden>
       <button class="btn sm sec" data-act="sharelink">分享連結</button>
-      <button class="btn sm sec" data-act="shareimg">分享圖片</button></div>` : ''}<ul class="sources">${src}</ul>` : ''}
+      <button class="btn sm sec" data-act="shareimg">分享圖片</button></div>` : ''}<ul class="sources">${src}</ul>
+    ${c.lib && !opts.shared ? `<p class="report"><a href="${esc(reportUrl(c))}" target="_blank" rel="noopener noreferrer">內容有誤？回報給管理者</a></p>` : ''}` : ''}
     ${terms ? `<h2 class="section-h">延伸名詞</h2><div class="rows">${terms}</div>` : ''}
   </article>`;
 }
 
 function renderExplore(){
-  if (!state.settings.key.trim()){
-    return `<div class="empty"><h2>先設定 Gemini API 金鑰</h2>
-      <p>金鑰只會存在這台裝置的瀏覽器裡。設定好之後，就能隨機取得知識點，並沿著專有名詞一路往下延伸。</p>
-      <button class="btn" data-act="view" data-view="settings">前往設定</button></div>`;
-  }
   let html = '';
+  if (state.keyNeed){
+    html += `<div class="notice info" role="note">「${esc(state.keyNeed)}」是進階功能，需要你自己的 Gemini API 金鑰。沒有金鑰也可以繼續從卡片庫讀卡與測驗。
+      <div class="btns"><button class="btn sm" data-act="view" data-view="settings">前往設定</button><button class="btn sm sec" data-act="keyneedclose">稍後再說</button></div></div>`;
+  }
   if (state.drive.connected && state.drive.auto && !rt.dismissed && !tokenValid() && Date.now() - state.drive.lastSync > 20 * 3600 * 1000){
     html += `<div class="notice info">距離上次同步 Google Drive 已超過一天。
       <div class="btns"><button class="btn sm" data-act="drivesync">立即同步</button><button class="btn sm sec" data-act="drivedismiss">略過</button></div></div>`;
@@ -2169,7 +2323,9 @@ function renderExplore(){
   const c = current();
   if (c) return html + renderCard(c);
   return html + `<div class="empty"><h2>今天想認識什麼？</h2>
-    <p>每次會從你在設定中選的領域隨機挑一個知識點。點畫底線的名詞，就能繼續往下探索。</p></div>`;
+    <p>${hasKey()
+      ? '每次會從你在設定中選的領域隨機挑一個知識點。點畫底線的名詞，就能繼續往下探索。'
+      : '按下方的「取得知識點」，從共用卡片庫挑一張你還沒讀過的卡片。每張卡都先取得維基百科或學術論文的原文，再由 AI 摘要，來源附在卡片下方。不需要任何設定。'}</p></div>`;
 }
 
 // 收藏頁上方的成就區：總積分、各大領域獎盃與子領域獎章進度、綜合測驗入口
@@ -2230,7 +2386,8 @@ function renderSettings(){
     </div>
   </section>
   <section class="group">
-    <h2>Gemini API 金鑰</h2>
+    <h2>進階功能：Gemini API 金鑰（選填）</h2>
+    <p class="hint">沒有金鑰也能從共用卡片庫讀卡、做測驗、累積積分。設定自己的金鑰後，可以展開延伸名詞、即時提問，並在卡片庫沒有合適卡片時即時產生新的知識點。</p>
     <p class="hint">到 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> 免費建立。金鑰不會寫進網頁原始碼。連結 Google Drive 後，金鑰會一起同步到你 Drive 的隱藏資料夾，其他裝置登入同一個帳號就會自動取回。</p>
     <div class="field-row">
       <input class="input" id="key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="貼上 API 金鑰" value="${esc(s.key)}">
@@ -2523,7 +2680,7 @@ function renderCardSheet(el, sh){
 function renderActions(){
   const bar = $('#actions');
   if (state.view === 'shared' && state.shared){ bar.hidden = false; renderSharedBar(bar); return; }
-  if (state.view !== 'explore' || !state.settings.key.trim()){ bar.hidden = true; return; }
+  if (state.view !== 'explore'){ bar.hidden = true; return; }
   bar.hidden = false;
   const c = current();
   const isSaved = c && state.saved.includes(c.id);
@@ -2590,7 +2747,8 @@ document.addEventListener('click', e => {
       if (state.awardSel) prepareAwardImage(state.awardSel);
       render(); break;
     case 'awardshare': deliverImage(prepareAwardImage(el.dataset.key), awardLabel(el.dataset.key)); break;
-    case 'new': newPoint(); break;
+    case 'new': state.keyNeed = null; newPoint(); break;
+    case 'keyneedclose': state.keyNeed = null; render(); break;
     case 'term':
       if (state.view === 'shared' && state.shared){
         if (!state.settings.key.trim()){ state.sharedNeedKey = true; render(); window.scrollTo(0, 0); break; }
@@ -2607,7 +2765,6 @@ document.addEventListener('click', e => {
       persist(); render(); window.scrollTo(0, 0); break;
     case 'branch':
       state.sheet = null;
-      if (!state.settings.key.trim()){ state.view = 'settings'; render(); toast('請先設定 API 金鑰'); break; }
       state.view = 'explore'; render(); window.scrollTo(0, 0);
       newPoint({ cat: el.dataset.cat, sub: el.dataset.sub || null }); break;
     case 'sheetsub': state.sheet = { type:'sub', cat:el.dataset.cat, sub:el.dataset.sub }; renderSheet(); break;
@@ -2616,7 +2773,6 @@ document.addEventListener('click', e => {
     case 'sheetterm': {
       const sc = state.sheet && state.cards[state.sheet.id];
       if (!sc) break;
-      if (!state.settings.key.trim()){ state.view = 'settings'; render(); toast('請先設定 API 金鑰'); break; }
       state.path = lineage(sc.id); state.view = 'explore'; state.sheet = null;
       persist(); render(); window.scrollTo(0, 0);
       openTerm(el.dataset.term, el.dataset.en || sc.terms.find(t => t.term === el.dataset.term)?.english || ''); break;
@@ -2768,8 +2924,30 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('hashchange', () => { readShareFromHash().then(ok => { if (ok){ render(); window.scrollTo(0, 0); } }); });
-readShareFromHash().then(() => render());
-render();
+// 卡片庫產生模式：只有 GitHub Actions 的產生腳本會在載入前注入 window.__KX_BUILD__（含管理者金鑰）並開啟 #kx-build。
+// 金鑰只留在該無頭瀏覽器的記憶體，不寫入任何儲存空間；一般使用者開啟網站時這段完全不會執行。
+if (location.hash === '#kx-build' && window.__KX_BUILD__ && window.__KX_BUILD__.key){
+  state.settings = Object.assign({}, state.settings, { key:String(window.__KX_BUILD__.key), model:DEFAULT_MODEL, autoFallback:true });
+  window.__kxBuild = {
+    FIELDS, LEVELS,
+    async makePoint(cat, lv, seenList){
+      try{
+        const card = await makePoint({ cat, sub:pick(FIELDS[cat]), lv, seen:new Set(seenList), status:() => {} });
+        return { card };
+      }catch(e){ return { error:String(e && e.message || e) }; }
+    },
+    async questions(cards){
+      try{
+        const items = await askQuestions(cards, undefined, () => {});
+        return { items: items.map(it => ({ id:it.cardId, q:it.q, options:it.options, answer:it.answer, explain:it.explain })) };
+      }catch(e){ return { error:String(e && e.message || e) }; }
+    }
+  };
+} else {
+  readShareFromHash().then(() => render());
+  render();
+  libRemoved();
+}
 })();
 </script>
 </body>

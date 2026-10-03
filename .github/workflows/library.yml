@@ -1,0 +1,57 @@
+name: 更新共用卡片庫
+
+on:
+  schedule:
+    - cron: '0 18 * * *'   # 每天台灣時間凌晨 2 點
+  workflow_dispatch:
+    inputs:
+      count:
+        description: '產生幾張（0 = 全部，16 個大領域 × 5 個難度約 80 張；測試時建議填 2）'
+        required: false
+        default: '0'
+
+# 只在排程與手動觸發時執行，不在 pull request 觸發，避免外人透過 fork 取得金鑰
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: library
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安裝 Playwright 與 Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright
+          npx playwright install --with-deps chromium
+
+      - name: 產生卡片並處理下架
+        run: node scripts/build-library.mjs
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KX_COUNT: ${{ github.event.inputs.count || '0' }}
+
+      # 即使上一步部分失敗，也把已完成的卡片存回 repo
+      - name: 提交卡片庫
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add library
+          if git diff --cached --quiet; then
+            echo "卡片庫沒有變更"
+          else
+            git commit -m "卡片庫更新 $(TZ=Asia/Taipei date +%F)"
+            git push
+          fi
