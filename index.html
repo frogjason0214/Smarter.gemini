@@ -266,6 +266,13 @@ body.asking .wrap{padding-bottom:calc(var(--askh) + 24px)}
 .btn.icon[aria-pressed="true"] .fillable{fill:currentColor;fill-opacity:.18}
 .btn.icon.askon{color:var(--accent)}
 
+/* share */
+.refs-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 2px}
+.refs-row .refs-h{margin:0}
+.sharebtn{background:none;border:0;color:var(--muted);padding:4px;border-radius:8px;display:inline-flex}
+.sharebtn:hover{color:var(--accent);background:var(--accent-soft)}
+.sharebtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
 @media (prefers-reduced-motion: reduce){.pulse::after{animation:none;width:100%}.toast{transition:none}}
 </style>
 </head>
@@ -351,7 +358,7 @@ const store = {
 
 const state = {
   view: 'explore',
-  settings: Object.assign({ key:'', model:DEFAULT_MODEL, level:'大學', fields:[], theme:'auto' }, store.get('kx_settings', {})),
+  settings: Object.assign({ key:'', model:DEFAULT_MODEL, level:'碩士', fields:[], theme:'auto' }, store.get('kx_settings', {})),
   cards: store.get('kx_cards', {}),
   saved: store.get('kx_saved', []),
   seen: store.get('kx_seen', []),
@@ -1255,6 +1262,136 @@ async function askCall(){
   }
 }
 
+// ---------- 分享單張卡片 ----------
+// 卡片內容壓縮後放在網址 # 之後：不經過任何伺服器，只有拿到連結的人看得到
+const SHARE_HOSTS = ['wikipedia.org', 'doi.org', 'openalex.org'];
+state.shared = null; state.sharedAddedId = null; state.sharedNeedKey = false;
+const shareCache = {};
+
+const b64url = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const unb64url = str => { const s = atob(str.replace(/-/g, '+').replace(/_/g, '/')); const out = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i); return out; };
+async function pipeBytes(bytes, stream){
+  const res = new Response(new Blob([bytes]).stream().pipeThrough(stream));
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+function sharePayload(c){
+  return { v:1, t:c.title, e:c.english, f:c.field, c:c.cat, s:c.sub, l:c.level, k:c.srcType, sk:c.srcKey,
+    b:c.body, tm:c.terms.map(t => [t.term, t.english, t.brief]), cs:c.consensus,
+    src:c.sources.map(s => ({ title:s.title, author:s.author, year:s.year, venue:s.venue, cited:s.cited, url:s.url })),
+    m:c.model, d:c.createdAt };
+}
+async function buildShareUrl(c){
+  const key = c.id + ':' + (c.updatedAt || c.createdAt);
+  if (shareCache[key]) return shareCache[key];
+  const raw = new TextEncoder().encode(JSON.stringify(sharePayload(c)));
+  let data;
+  if (window.CompressionStream){
+    try{ data = 'z' + b64url(await pipeBytes(raw, new CompressionStream('deflate-raw'))); }catch{}
+  }
+  if (!data) data = 'j' + b64url(raw);
+  const url = location.origin + location.pathname + '#s=' + data;
+  shareCache[key] = url;
+  return url;
+}
+const isShareable = c => c && !c.stub && !!c.srcType && c.sources && c.sources.length;
+function shareSummary(c){
+  const text = plain(c.body).replace(/\$\$[\s\S]*?\$\$|\$[^$]*\$/g, '').replace(/\s+/g, ' ').trim();
+  const first = (text.match(/^.+?[。！？]/) || [text])[0];
+  return first.length > 70 ? first.slice(0, 68) + '…' : first;
+}
+async function shareCard(c){
+  const pending = shareCache[c.id + ':' + (c.updatedAt || c.createdAt)];
+  const url = pending || await buildShareUrl(c);
+  const text = `${c.title}｜${shareSummary(c)}`;
+  if (navigator.share){
+    try{ await navigator.share({ title:c.title, text, url }); return; }
+    catch(e){ if (e.name === 'AbortError') return; }
+  }
+  try{ await navigator.clipboard.writeText(text + '\n' + url); toast('已複製分享連結'); }
+  catch{ window.prompt('複製這個連結來分享：', url); }
+}
+
+// 讀取分享連結：內容來自網址，一律視為不可信輸入，逐欄位檢查並限制長度
+const str = (v, max) => String(v == null ? '' : v).slice(0, max);
+function safeUrl(u){
+  try{
+    const x = new URL(String(u));
+    if (x.protocol !== 'https:') return '';
+    return SHARE_HOSTS.some(h => x.hostname === h || x.hostname.endsWith('.' + h)) ? x.href : '';
+  }catch{ return ''; }
+}
+function sanitizeShared(p){
+  if (!p || p.v !== 1 || !p.t || !p.b) throw new Error('bad');
+  const cat = FIELDS[p.c] ? p.c : '未分類';
+  return {
+    id:'shared', kind:'point', parentId:null, shared:true,
+    title:str(p.t, 200), english:str(p.e, 200), field:str(p.f, 80),
+    cat, sub: FIELDS[cat] && FIELDS[cat].includes(p.s) ? p.s : null,
+    level: LEVELS.includes(p.l) ? p.l : '',
+    srcType: MODE_LABEL[p.k] ? p.k : '', srcKey: str(p.sk, 300),
+    body:str(p.b, 20000), consensus:str(p.cs, 1000),
+    terms:(Array.isArray(p.tm) ? p.tm : []).slice(0, 12).filter(t => Array.isArray(t) && t[0])
+      .map(t => ({ term:str(t[0], 80), english:str(t[1], 120), brief:str(t[2], 200) })),
+    sources:(Array.isArray(p.src) ? p.src : []).slice(0, 6).filter(s => s && s.title).map(s => ({
+      title:str(s.title, 300), author:str(s.author, 200), year:str(s.year, 10), venue:str(s.venue, 200),
+      cited: Number.isFinite(Number(s.cited)) ? Number(s.cited) : 0, url: safeUrl(s.url) })),
+    model: MODELS.some(m => m.id === p.m) ? p.m : '',
+    createdAt: Number.isFinite(Number(p.d)) ? Number(p.d) : 0,
+    doubt:false
+  };
+}
+async function readShareFromHash(){
+  const h = location.hash;
+  if (!h.startsWith('#s=')) return false;
+  try{
+    const data = h.slice(3);
+    let bytes = unb64url(data.slice(1));
+    if (data[0] === 'z'){
+      if (!window.DecompressionStream) throw new Error('old');
+      bytes = await pipeBytes(bytes, new DecompressionStream('deflate-raw'));
+    } else if (data[0] !== 'j') throw new Error('bad');
+    state.shared = sanitizeShared(JSON.parse(new TextDecoder().decode(bytes)));
+    state.sharedAddedId = null; state.sharedNeedKey = false;
+    state.view = 'shared';
+    return true;
+  }catch(e){
+    history.replaceState(null, '', location.pathname + location.search);
+    toast(e.message === 'old' ? '這個瀏覽器版本太舊，無法開啟分享連結，請更新後再試。' : '這個分享連結無法開啟，可能不完整或已被修改。');
+    return false;
+  }
+}
+function closeShared(){
+  state.shared = null; state.sharedAddedId = null; state.sharedNeedKey = false;
+  if (location.hash.startsWith('#s=')) history.replaceState(null, '', location.pathname + location.search);
+}
+function addSharedToTree(){
+  if (state.sharedAddedId && state.cards[state.sharedAddedId]) return state.sharedAddedId;
+  const s = state.shared;
+  const card = Object.assign({}, s, { id:uid(), shared:undefined, sharedFrom:true, origDate:s.createdAt,
+    createdAt:Date.now(), fallback:false });
+  delete card.shared;
+  const prev = state.termIndex[card.title];
+  addCard(card);
+  if (prev && state.cards[prev]) state.termIndex[card.title] = prev;   // 已有同名卡片時，延伸名詞仍連到原本那張
+  state.sharedAddedId = card.id;
+  persist();
+  return card.id;
+}
+function renderShared(){
+  const s = state.shared;
+  return `<div class="notice info" role="note">這是他人分享的內容，本網站無法保證未被修改，請以來源原文為準。</div>
+    ${state.sharedNeedKey ? `<div class="notice">設定 Gemini 金鑰後就能點延伸名詞繼續探索。
+      <div class="btns"><button class="btn sm" data-act="view" data-view="settings">前往設定</button><button class="btn sm sec" data-act="sharedkeyclose">稍後再說</button></div></div>` : ''}
+    ${renderCard(s, { shared:true })}`;
+}
+function renderSharedBar(bar){
+  const added = state.sharedAddedId && state.cards[state.sharedAddedId];
+  bar.innerHTML = `<div class="actions-in">
+    ${added ? '<button class="btn" data-act="sharedopen">開啟我知識樹中的這張</button>' : '<button class="btn" data-act="sharedadd">加入我的知識樹</button>'}
+    <button class="btn sec" data-act="sharedclose">關閉</button></div>`;
+}
+
 // ---------- render ----------
 const ICONS = {
   explore:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><path class="fillable" d="M15.6 8.4l-2.2 5-5 2.2 2.2-5z"/></svg>',
@@ -1262,6 +1399,7 @@ const ICONS = {
   library:'<svg viewBox="0 0 24 24" aria-hidden="true"><path class="fillable" d="M7 3.8h10a1 1 0 0 1 1 1V20l-6-4-6 4V4.8a1 1 0 0 1 1-1z"/></svg>',
   settings:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.86 10.61 L21.13 10.90 L21.13 13.10 L18.86 13.39 L17.83 15.87 L19.24 17.68 L17.68 19.24 L15.87 17.83 L13.39 18.86 L13.10 21.13 L10.90 21.13 L10.61 18.86 L8.13 17.83 L6.32 19.24 L4.76 17.68 L6.17 15.87 L5.14 13.39 L2.87 13.10 L2.87 10.90 L5.14 10.61 L6.17 8.13 L4.76 6.32 L6.32 4.76 L8.13 6.17 L10.61 5.14 L10.90 2.87 L13.10 2.87 L13.39 5.14 L15.87 6.17 L17.68 4.76 L19.24 6.32 L17.83 8.13Z"/><circle cx="12" cy="12" r="3"/></svg>',
   ask:'<svg viewBox="0 0 24 24" aria-hidden="true"><path class="fillable" d="M5 4.5h14a1.2 1.2 0 0 1 1.2 1.2v9.1a1.2 1.2 0 0 1-1.2 1.2h-7.2L7.5 19.6V16H5a1.2 1.2 0 0 1-1.2-1.2V5.7A1.2 1.2 0 0 1 5 4.5z"/><path d="M8.5 9h7M8.5 12h4.5"/></svg>',
+  share:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11M8 7.3l4-3.8 4 3.8"/><path d="M8.5 10.5H6.8a1.3 1.3 0 0 0-1.3 1.3v7.4a1.3 1.3 0 0 0 1.3 1.3h10.4a1.3 1.3 0 0 0 1.3-1.3v-7.4a1.3 1.3 0 0 0-1.3-1.3h-1.7"/></svg>',
   doubt:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle class="fillable" cx="12" cy="12" r="9.2"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.3c-.7.3-1.2.9-1.2 1.7v.6"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>'
 };
 const NAV = [['explore','探索'],['tree','知識樹'],['library','收藏'],['settings','設定']];
@@ -1291,7 +1429,7 @@ function scholarUrl(src){
   return 'https://scholar.google.com/scholar?q=' + encodeURIComponent(`"${String(src.title).trim()}"${first ? ' ' + first : ''}`);
 }
 
-function renderCard(c){
+function renderCard(c, opts = {}){
   if (c.stub){
     return `<article>
       <div class="meta">${c.field ? `<span class="field">${esc(c.field)}</span>` : ''}${c.english ? `<span class="en">${esc(c.english)}</span>` : ''}</div>
@@ -1302,11 +1440,16 @@ function renderCard(c){
   }
   const src = c.sources.map(s => {
     const by = [s.author, s.year, s.venue, s.cited ? `被引用 ${Number(s.cited).toLocaleString('zh-TW')} 次` : ''].filter(Boolean).join('，');
+    if (opts.shared){
+      // 分享內容只把白名單網域顯示為連結，其餘一律為純文字
+      const u = safeUrl(s.url);
+      return `<li>${u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer" title="另開新頁閱讀原始來源">${esc(s.title)}</a>` : esc(s.title)}${by ? `（${esc(by)}）` : ''}</li>`;
+    }
     const direct = /^https?:\/\//.test(s.url || '');
     return `<li><a href="${direct ? esc(s.url) : scholarUrl(s)}" target="_blank" rel="noopener noreferrer" title="${direct ? '另開新頁閱讀原始來源' : '在 Google Scholar 開啟這篇文獻'}">${esc(s.title)}</a>${by ? `（${esc(by)}）` : ''}</li>`;
   }).join('');
   const terms = c.terms.map(t => {
-    const cached = state.termIndex[t.term] && state.cards[state.termIndex[t.term]];
+    const cached = !opts.shared && state.termIndex[t.term] && state.cards[state.termIndex[t.term]];
     return `<button class="row" data-act="term" data-term="${esc(t.term)}" data-en="${esc(t.english)}">
       <div class="r1"><span class="t">${esc(t.term)}</span>${t.english ? `<span class="s">${esc(t.english)}</span>` : ''}${cached ? '<span class="cached">已展開</span>' : ''}</div>
       ${t.brief ? `<div class="b">${esc(t.brief)}</div>` : ''}
@@ -1318,13 +1461,16 @@ function renderCard(c){
       ${c.english ? `<span class="en">${esc(c.english)}</span>` : ''}
       ${c.level ? `<span class="lv">${esc(c.level)}程度</span>` : ''}
       ${c.srcType ? `<span class="lv">${MODE_LABEL[c.srcType]}</span>` : ''}
-      ${(c.fallback || STRONG_LEVELS.includes(c.level)) && c.model ? `<span class="lv">由 ${esc(modelLabel(c.model))} 撰寫</span>` : ''}
+      ${(opts.shared || c.fallback || STRONG_LEVELS.includes(c.level)) && c.model ? `<span class="lv">由 ${esc(modelLabel(c.model))} 撰寫</span>` : ''}
+      ${opts.shared && c.createdAt ? `<span class="lv">產生於 ${new Date(c.createdAt).toLocaleDateString('zh-TW')}</span>` : ''}
+      ${c.sharedFrom ? `<span class="lv">來自分享</span>` : ''}
       ${c.doubt ? '<span class="flag">已標記存疑</span>' : ''}
     </div>
     <h1 class="title">${esc(c.title)}</h1>
     <div class="body">${renderBody(c.body)}</div>
     ${c.consensus ? `<p class="why"><b>${c.srcType === 'recent' ? '證據程度' : '為何可信'}：</b>${esc(c.consensus)}</p>` : ''}
-    ${src ? `<p class="refs-h">${c.srcType ? '資料來源' : '參考文獻'}</p><ul class="sources">${src}</ul>` : ''}
+    ${src ? `<div class="refs-row"><p class="refs-h">${c.srcType ? '資料來源' : '參考文獻'}</p>${!opts.shared && isShareable(c)
+      ? `<button class="sharebtn" data-act="share" aria-label="分享這張卡片" title="分享這張卡片">${ICONS.share}</button>` : ''}</div><ul class="sources">${src}</ul>` : ''}
     ${terms ? `<h2 class="section-h">延伸名詞</h2><div class="rows">${terms}</div>` : ''}
   </article>`;
 }
@@ -1592,6 +1738,7 @@ function renderSheet(){
 
 function renderActions(){
   const bar = $('#actions');
+  if (state.view === 'shared' && state.shared){ bar.hidden = false; renderSharedBar(bar); return; }
   if (state.view !== 'explore' || !state.settings.key.trim()){ bar.hidden = true; return; }
   bar.hidden = false;
   const c = current();
@@ -1617,7 +1764,11 @@ function render(){
   document.documentElement.style.setProperty('--hh', $('.bar').offsetHeight + 'px');
   document.body.classList.toggle('maponly', tree);
   main.className = tree ? 'mapwrap' : 'wrap';
-  main.innerHTML = tree ? renderTree() : state.view === 'library' ? renderLibrary() : state.view === 'settings' ? renderSettings() : renderExplore();
+  main.innerHTML = tree ? renderTree() : state.view === 'shared' && state.shared ? renderShared()
+    : state.view === 'library' ? renderLibrary() : state.view === 'settings' ? renderSettings() : renderExplore();
+  // 預先產生分享連結，讓點擊時能立即叫出分享選單（iOS 需要在點擊當下呼叫）
+  const sc = state.view === 'explore' && current();
+  if (isShareable(sc)) buildShareUrl(sc).catch(() => {});
   renderActions();
   renderSheet();
   if (tree){ drawMap(); return; }
@@ -1634,9 +1785,18 @@ document.addEventListener('click', e => {
   const act = el.dataset.act;
   const c = current();
   switch (act){
-    case 'view': state.view = el.dataset.view; render(); window.scrollTo(0, 0); break;
+    case 'view': if (state.view === 'shared') closeShared(); state.view = el.dataset.view; render(); window.scrollTo(0, 0); break;
     case 'new': newPoint(); break;
-    case 'term': openTerm(el.dataset.term, el.dataset.en || (c?.terms.find(t => t.term === el.dataset.term)?.english) || ''); break;
+    case 'term':
+      if (state.view === 'shared' && state.shared){
+        if (!state.settings.key.trim()){ state.sharedNeedKey = true; render(); window.scrollTo(0, 0); break; }
+        // 有金鑰：先把分享卡片加入知識樹，名詞接在它底下
+        const sid = addSharedToTree();
+        const en = el.dataset.en || state.shared.terms.find(t => t.term === el.dataset.term)?.english || '';
+        closeShared(); state.view = 'explore'; state.path = [sid]; persist(); render();
+        openTerm(el.dataset.term, en); break;
+      }
+      openTerm(el.dataset.term, el.dataset.en || (c?.terms.find(t => t.term === el.dataset.term)?.english) || ''); break;
     case 'trail': goTo(el.dataset.id); break;
     case 'open': case 'openpath':
       state.path = lineage(el.dataset.id); state.view = 'explore'; state.sheet = null;
@@ -1651,6 +1811,11 @@ document.addEventListener('click', e => {
     case 'mapreset': state.mapT = null; render(); break;
     case 'regen': regen(c); break;
     case 'vote': vote(c, Number(el.dataset.dir)); break;
+    case 'share': if (c) shareCard(c); break;
+    case 'sharedadd': addSharedToTree(); render(); toast('已加入你的知識樹，並標示為「來自分享」'); break;
+    case 'sharedopen': { const id = state.sharedAddedId; closeShared(); state.view = 'explore'; state.path = lineage(id); persist(); render(); window.scrollTo(0, 0); break; }
+    case 'sharedclose': closeShared(); state.view = 'explore'; render(); window.scrollTo(0, 0); break;
+    case 'sharedkeyclose': state.sharedNeedKey = false; render(); break;
     case 'theme': state.settings.theme = el.dataset.theme; saveSettings(); applyTheme(); render(); break;
     case 'drivesync': withToken(() => driveSync(false)); break;
     case 'drivedismiss': rt.dismissed = true; render(); break;
@@ -1760,6 +1925,8 @@ window.addEventListener('resize', () => {
   resizeTimer = setTimeout(() => { if (state.view === 'tree') render(); }, 200);
 });
 
+window.addEventListener('hashchange', () => { readShareFromHash().then(ok => { if (ok){ render(); window.scrollTo(0, 0); } }); });
+readShareFromHash().then(() => render());
 render();
 })();
 </script>
