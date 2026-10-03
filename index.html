@@ -1411,29 +1411,46 @@ function prepareShareImage(c){
   return shareImgCache[key];
 }
 
-// 摘要：預設取第一句；公式畫不出來時，改選不含公式的句子
+// 摘要：從開頭起依序取整句，累計約 180 字為止（第一句本身過長才截斷）；
+// 公式畫不出來時，只取不含公式的句子
+const SUMMARY_MAX = 180;
 function summaryParts(c, allowMath){
   const text = plain(c.body).replace(/\s+/g, ' ').trim();
-  const sents = (text.match(/[^。！？]+[。！？]?/g) || [text]).map(s => s.trim()).filter(Boolean);
-  const s = allowMath ? sents[0] : sents.find(x => !x.includes('$'));
-  if (s == null) return [{ t:shareSummary(c) }];
-  const parts = [];
-  let last = 0, budget = 70;
-  const push = (p, cost) => { if (cost > budget) return false; budget -= cost; parts.push(p); return true; };
-  const addText = t => {
-    if (!t) return true;
-    if (t.length <= budget){ budget -= t.length; parts.push({ t }); return true; }
-    if (budget > 1) parts.push({ t:t.slice(0, budget - 1) });
-    parts.push({ t:'…' }); budget = 0; return false;
+  const sents = (text.match(/[^。！？]+[。！？]?/g) || [text]).map(s => s.trim()).filter(Boolean)
+    .filter(s => allowMath || !s.includes('$'));
+  if (!sents.length) return [{ t:shareSummary(c) }];
+  const tokenize = s => {
+    const parts = []; let last = 0, cost = 0;
+    for (const m of s.matchAll(/\$\$([\s\S]+?)\$\$|\$([^$]+)\$/g)){
+      if (m.index > last){ parts.push({ t:s.slice(last, m.index) }); cost += m.index - last; }
+      const tex = (m[1] || m[2]).trim();
+      parts.push({ m:tex }); cost += Math.min(8, tex.length);
+      last = m.index + m[0].length;
+    }
+    if (last < s.length){ parts.push({ t:s.slice(last) }); cost += s.length - last; }
+    return { parts, cost };
   };
-  for (const m of s.matchAll(/\$\$([\s\S]+?)\$\$|\$([^$]+)\$/g)){
-    if (!addText(s.slice(last, m.index))) return parts;
-    const tex = (m[1] || m[2]).trim();
-    if (!push({ m:tex }, Math.min(8, tex.length))){ parts.push({ t:'…' }); return parts; }
-    last = m.index + m[0].length;
+  const out = []; let used = 0;
+  for (const s of sents){
+    const { parts, cost } = tokenize(s);
+    if (used + cost > SUMMARY_MAX){
+      if (!out.length) return truncateParts(parts, SUMMARY_MAX);
+      break;
+    }
+    out.push(...parts); used += cost;
   }
-  addText(s.slice(last));
-  return parts;
+  return out;
+}
+function truncateParts(parts, budget){
+  const out = [];
+  for (const p of parts){
+    const cost = p.m ? Math.min(8, p.m.length) : p.t.length;
+    if (cost <= budget){ out.push(p); budget -= cost; continue; }
+    if (p.t && budget > 1) out.push({ t:p.t.slice(0, budget - 1) });
+    out.push({ t:'…' });
+    break;
+  }
+  return out;
 }
 
 // LaTeX → 獨立的 SVG 圖（把 MathJax 全域字形快取裡用到的字形複製進去），再載入成 Image 供 canvas 繪製
@@ -1524,13 +1541,13 @@ async function drawShareImage(c, allowMath){
   try{
     await Promise.all([
       document.fonts.load('700 72px "Noto Serif TC"', allText),
-      document.fonts.load('500 46px "Noto Serif TC"', allText)
+      document.fonts.load('500 40px "Noto Serif TC"', allText)
     ]);
   }catch{}
 
   const font = (w, px, fam) => `${w} ${px}px ${fam}`;
   const m = document.createElement('canvas').getContext('2d');   // 只用來量字寬
-  const bodyPx = 46;
+  const bodyPx = 40;
   for (const p of parts) if (p.m) p.math = await mathImage(p.m, bodyPx, C.ink);
   let titlePx = 72;
   m.font = font(700, titlePx, IMG_SERIF);
