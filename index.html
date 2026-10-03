@@ -178,6 +178,24 @@ body.maponly{overflow:hidden;overscroll-behavior:none}
 .sheet .sub{font-size:13.5px;color:var(--muted);margin:2px 0 12px}
 .sheet .x{background:none;border:0;color:var(--muted);font-size:14px;padding:4px 2px}
 .sheet .go{width:100%;margin:4px 0 8px}
+/* 卡片預覽：固定占下半部，上方地圖仍可拖曳、點選其他分支 */
+.sheet.full{height:52dvh;max-height:none;padding-top:0}
+.sheet.full .sheet-h{position:sticky;top:0;z-index:1;background:var(--surface);padding:14px 0 8px;align-items:center}
+.sheet .crumb{display:flex;flex-wrap:wrap;align-items:center;gap:2px;font-size:13px;color:var(--muted);min-width:0}
+.sheet .crumb button{background:none;border:0;padding:2px 4px;color:var(--accent);border-radius:4px}
+.sheet .crumb .sep{opacity:.5}
+.sheet-tools{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 4px}
+.sheet-tools .danger{color:var(--warn)}
+.sheet h1.title{font-size:24px;margin:4px 0 14px}
+.sheet .body p{font-size:16.5px;line-height:1.9}
+.sheet .section-h{margin-top:24px}
+.movebox{background:var(--bg);border:1px solid var(--rule);border-radius:12px;padding:12px 14px;margin:10px 0 4px;font-size:14.5px}
+.movebox .selrow{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.movebox select{flex:1;min-width:130px;background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:8px 10px;font-size:15px}
+.movebox .hint{color:var(--muted);font-size:13.5px;margin:0 0 8px}
+.mapsvg .node.sel .dot{stroke:var(--ink);stroke-width:3}
+.mapsvg .node.sel text{font-weight:700}
+.mapsvg.far .node.card.sel text{display:inline}
 .stub{color:var(--muted);margin:8px 0 20px}
 
 /* ask panel：占螢幕下半部，上方文章可繼續閱讀 */
@@ -366,6 +384,7 @@ const state = {
   bias: store.get('kx_bias', {}),
   biasAt: store.get('kx_biasat', 0),
   savedLog: store.get('kx_savedlog', {}),
+  deleted: store.get('kx_deleted', {}),
   path: store.get('kx_path', []),
   loading: false, loadingText: '', error: '', retry: null, controller: null,
   models: []
@@ -412,6 +431,7 @@ function persist(){
   store.set('kx_cards', state.cards);
   store.set('kx_saved', state.saved);
   store.set('kx_savedlog', state.savedLog);
+  store.set('kx_deleted', state.deleted);
   store.set('kx_seen', state.seen.slice(-300));
   store.set('kx_terms', state.termIndex);
   store.set('kx_bias', state.bias);
@@ -434,7 +454,7 @@ const fmtDateTime = ts => new Date(ts).toLocaleString('zh-TW', { month:'numeric'
 // includeKey 只用於 Google Drive 同步；手動匯出的檔案不含金鑰，避免檔案外流時一併洩漏
 function snapshot(includeKey){
   const data = { app:'knowledge-explorer', version:2, exportedAt:new Date().toISOString(),
-    cards:state.cards, saved:state.saved, savedLog:state.savedLog, seen:state.seen.slice(-300),
+    cards:state.cards, saved:state.saved, savedLog:state.savedLog, deleted:state.deleted, seen:state.seen.slice(-300),
     termIndex:state.termIndex, bias:state.bias, biasAt:state.biasAt };
   if (includeKey && state.settings.key.trim()){ data.geminiKey = state.settings.key.trim(); data.keyAt = state.settings.keyAt || 0; }
   return data;
@@ -449,8 +469,14 @@ function mergeBackup(data){
     state.settings.key = data.geminiKey; state.settings.keyAt = data.keyAt || 0;
     saveSettings(); keyRestored = true; changed = true;
   }
+  // 刪除紀錄（墓碑）：任一方刪過的卡片，合併後都不再出現
+  for (const [id, t] of Object.entries(data.deleted || {})){
+    if (!(state.deleted[id] >= t)) state.deleted[id] = t;
+  }
+  const gone = Object.keys(state.deleted).filter(id => state.cards[id]);
+  if (gone.length){ dropCards(gone); changed = true; }
   for (const [id, rc] of Object.entries(data.cards)){
-    if (!rc || !rc.id) continue;
+    if (!rc || !rc.id || state.deleted[id]) continue;
     const lc = state.cards[id];
     if (!lc){ state.cards[id] = rc; added++; changed = true; continue; }
     const lt = lc.updatedAt || lc.createdAt || 0, rtm = rc.updatedAt || rc.createdAt || 0;
@@ -475,7 +501,7 @@ function mergeBackup(data){
   state.saved = saved.filter(id => state.cards[id]);
   if (state.saved.join(',') !== before) changed = true;
   state.seen = [...new Set([...state.seen, ...(data.seen || [])])];
-  for (const [k, v] of Object.entries(data.termIndex || {})) if (!state.termIndex[k] && state.cards[v]) state.termIndex[k] = v;
+  for (const [k, v] of Object.entries(data.termIndex || {})) if ((!state.termIndex[k] || !state.cards[state.termIndex[k]]) && state.cards[v]) state.termIndex[k] = v;
   if ((data.biasAt || 0) > state.biasAt){ state.bias = data.bias || {}; state.biasAt = data.biasAt; changed = true; }
   rt.applying = true; persist(); rt.applying = false;
   return { added, changed, keyRestored };
@@ -646,6 +672,51 @@ function lineage(id){
   let c = state.cards[id];
   while (c && !seen.has(c.id)){ out.unshift(c.id); seen.add(c.id); c = state.cards[c.parentId]; }
   return out;
+}
+
+// ---------- 整理知識樹：刪除與移動分支 ----------
+// 某張卡片底下所有延伸卡片（不含自己）
+function descendants(id){
+  const kids = {};
+  for (const c of Object.values(state.cards)) if (c.parentId && c.parentId !== c.id) (kids[c.parentId] = kids[c.parentId] || []).push(c.id);
+  const out = [], seen = new Set([id]), stack = [...(kids[id] || [])];
+  while (stack.length){
+    const x = stack.pop();
+    if (seen.has(x)) continue;
+    seen.add(x); out.push(x); stack.push(...(kids[x] || []));
+  }
+  return out;
+}
+// 只移除資料，不寫入墓碑；mergeBackup 也會用到
+function dropCards(ids){
+  const set = new Set(ids);
+  ids.forEach(id => delete state.cards[id]);
+  state.saved = state.saved.filter(id => !set.has(id));
+  for (const [k, v] of Object.entries(state.termIndex)) if (set.has(v)) delete state.termIndex[k];
+  const cut = state.path.findIndex(id => set.has(id));
+  if (cut >= 0) state.path = state.path.slice(0, cut);
+}
+function deleteBranch(id){
+  const ids = [id, ...descendants(id)];
+  const t = Date.now();
+  ids.forEach(x => { state.deleted[x] = t; if (state.saved.includes(x)) state.savedLog[x] = { on:false, t }; });
+  dropCards(ids);
+  persist();
+  return ids.length;
+}
+// 移到另一個子領域：脫離原本的上層卡片，底下的延伸卡片一起搬過去
+function moveBranch(id, cat, sub){
+  const c = state.cards[id];
+  if (!c || !FIELDS[cat] || !FIELDS[cat].includes(sub)) return 0;
+  const t = Date.now();
+  const ids = [id, ...descendants(id)];
+  for (const x of ids){
+    const d = state.cards[x];
+    d.cat = cat; d.sub = sub; d.field = `${cat}／${sub}`; d.updatedAt = t;
+  }
+  if (c.parentId){ c.movedFrom = c.parentId; delete c.parentId; }
+  persist();
+  return ids.length;
 }
 
 function normalize(raw, extra){
@@ -1408,9 +1479,9 @@ function renderNav(){
     `<button data-act="view" data-view="${v}" aria-label="${l}" title="${l}" ${state.view === v ? 'aria-current="page"' : ''}>${ICONS[v]}</button>`).join('');
 }
 
-function renderBody(body){
+function renderBody(body, act = 'term'){
   return String(body).split(/\n+/).map(p => p.trim()).filter(Boolean).map(p =>
-    '<p>' + esc(p).replace(/\[\[(.+?)\]\]/g, (m, t) => `<button class="term" data-act="term" data-term="${t}">${t}</button>`) + '</p>'
+    '<p>' + esc(p).replace(/\[\[(.+?)\]\]/g, (m, t) => `<button class="term" data-act="${act}" data-term="${t}">${t}</button>`) + '</p>'
   ).join('');
 }
 
@@ -1435,7 +1506,7 @@ function renderCard(c, opts = {}){
       <div class="meta">${c.field ? `<span class="field">${esc(c.field)}</span>` : ''}${c.english ? `<span class="en">${esc(c.english)}</span>` : ''}</div>
       <h1 class="title">${esc(c.title)}</h1>
       <p class="stub">為了節省儲存空間，這張卡片的內文已被清除，但它仍保留在你的知識樹裡。</p>
-      <button class="btn" data-act="regen">重新產生內容</button>
+      ${opts.sheet ? '' : '<button class="btn" data-act="regen">重新產生內容</button>'}
     </article>`;
   }
   const src = c.sources.map(s => {
@@ -1450,7 +1521,7 @@ function renderCard(c, opts = {}){
   }).join('');
   const terms = c.terms.map(t => {
     const cached = !opts.shared && state.termIndex[t.term] && state.cards[state.termIndex[t.term]];
-    return `<button class="row" data-act="term" data-term="${esc(t.term)}" data-en="${esc(t.english)}">
+    return `<button class="row" data-act="${opts.sheet ? 'sheetterm' : 'term'}" data-term="${esc(t.term)}" data-en="${esc(t.english)}">
       <div class="r1"><span class="t">${esc(t.term)}</span>${t.english ? `<span class="s">${esc(t.english)}</span>` : ''}${cached ? '<span class="cached">已展開</span>' : ''}</div>
       ${t.brief ? `<div class="b">${esc(t.brief)}</div>` : ''}
     </button>`;
@@ -1467,9 +1538,9 @@ function renderCard(c, opts = {}){
       ${c.doubt ? '<span class="flag">已標記存疑</span>' : ''}
     </div>
     <h1 class="title">${esc(c.title)}</h1>
-    <div class="body">${renderBody(c.body)}</div>
+    <div class="body">${renderBody(c.body, opts.sheet ? 'sheetterm' : 'term')}</div>
     ${c.consensus ? `<p class="why"><b>${c.srcType === 'recent' ? '證據程度' : '為何可信'}：</b>${esc(c.consensus)}</p>` : ''}
-    ${src ? `<div class="refs-row"><p class="refs-h">${c.srcType ? '資料來源' : '參考文獻'}</p>${!opts.shared && isShareable(c)
+    ${src ? `<div class="refs-row"><p class="refs-h">${c.srcType ? '資料來源' : '參考文獻'}</p>${!opts.shared && !opts.sheet && isShareable(c)
       ? `<button class="sharebtn" data-act="share" aria-label="分享這張卡片" title="分享這張卡片">${ICONS.share}</button>` : ''}</div><ul class="sources">${src}</ul>` : ''}
     ${terms ? `<h2 class="section-h">延伸名詞</h2><div class="rows">${terms}</div>` : ''}
   </article>`;
@@ -1687,15 +1758,38 @@ function drawMap(){
     ? d3.zoomIdentity.translate(state.mapT.x, state.mapT.y).scale(state.mapT.k)
     : d3.zoomIdentity.translate(w / 2, h / 2).scale(k0);
   svg.call(zoom.transform, t);
+  mapCtl = { svg, zoom, node };
+  markSel();
+}
+
+let mapCtl = null;
+function markSel(){
+  if (!mapCtl) return;
+  const id = state.sheet && state.sheet.type === 'card' ? state.sheet.id : null;
+  mapCtl.node.classed('sel', d => !!id && d.data.type === 'card' && d.data.id === id);
+}
+// 選取的卡片若被下方面板擋住，把地圖往上平移到可見區域中央
+function focusSel(){
+  if (!mapCtl || !state.sheet || state.sheet.type !== 'card') return;
+  const el = mapCtl.node.filter(d => d.data.type === 'card' && d.data.id === state.sheet.id).node();
+  if (!el) return;
+  const r = el.getBoundingClientRect(), box = mapCtl.svg.node().getBoundingClientRect();
+  const top = $('#sheet').getBoundingClientRect().top;
+  const y = r.top + r.height / 2, x = r.left + r.width / 2;
+  if (y > box.top + 40 && y < top - 40 && x > box.left + 20 && x < box.right - 20) return;
+  const k = d3.zoomTransform(mapCtl.svg.node()).k;
+  mapCtl.svg.transition().duration(300)
+    .call(mapCtl.zoom.translateBy, (box.left + box.width / 2 - x) / k, (box.top + (top - box.top) / 2 - y) / k);
+}
+function showCard(id){
+  state.sheet = { type:'card', id };
+  renderSheet(); focusSel();
 }
 
 function onNode(d){
   const t = d.data.type;
   if (t === 'root'){ state.mapT = null; state.sheet = null; render(); return; }
-  if (t === 'card'){
-    state.path = lineage(d.data.id); state.view = 'explore'; state.sheet = null;
-    persist(); render(); window.scrollTo(0, 0); return;
-  }
+  if (t === 'card'){ showCard(d.data.id); return; }
   state.sheet = t === 'cat' ? { type:'cat', cat:d.data.cat } : { type:'sub', cat:d.data.cat, sub:d.data.sub };
   renderSheet();
 }
@@ -1703,10 +1797,14 @@ function onNode(d){
 function renderSheet(){
   const el = $('#sheet');
   const sh = state.sheet;
-  if (state.view !== 'tree' || !sh){ el.hidden = true; el.innerHTML = ''; return; }
+  if (sh && sh.type === 'card' && !state.cards[sh.id]) state.sheet = null;
+  if (state.view !== 'tree' || !state.sheet){ el.hidden = true; el.innerHTML = ''; el.classList.remove('full'); markSel(); return; }
   el.hidden = false;
+  el.classList.toggle('full', sh.type === 'card');
+  markSel();
+  if (sh.type === 'card'){ renderCardSheet(el, sh); return; }
   const cards = Object.values(state.cards).filter(c => catOf(c) === sh.cat);
-  const cardRow = c => `<button class="row" data-act="openpath" data-id="${c.id}">
+  const cardRow = c => `<button class="row" data-act="sheetcard" data-id="${c.id}">
       <div class="r1"><span class="t serif">${esc(c.title)}</span>${c.kind === 'term' ? '<span class="s">延伸名詞</span>' : ''}${c.doubt ? '<span class="s" style="color:var(--warn)">存疑</span>' : ''}</div>
       <div class="b">${fmtDate(c.createdAt)}</div></button>`;
   let head, sub, go = '', rows;
@@ -1734,6 +1832,44 @@ function renderSheet(){
     <div class="sheet-h"><div><h3>${esc(head)}</h3><p class="sub">${sub}</p></div>
     <button class="x" data-act="sheetclose">關閉</button></div>
     ${go}${rows ? `<div class="rows">${rows}</div>` : ''}</div>`;
+  el.scrollTop = 0;
+}
+
+function renderCardSheet(el, sh){
+  const c = state.cards[sh.id];
+  const cat = catOf(c);
+  const crumbs = [`<button data-act="sheetcat" data-cat="${esc(cat)}">${esc(cat)}</button>`];
+  if (FIELDS[cat] && c.sub) crumbs.push(`<button data-act="sheetsub" data-cat="${esc(cat)}" data-sub="${esc(c.sub)}">${esc(c.sub)}</button>`);
+  lineage(c.id).slice(0, -1).forEach(id => crumbs.push(`<button data-act="sheetcard" data-id="${id}">${esc(state.cards[id].title)}</button>`));
+  const kids = descendants(c.id).length;
+  let move = '';
+  if (sh.moving){
+    const mc = sh.mcat || (FIELDS[cat] ? cat : Object.keys(FIELDS)[0]);
+    const ms = FIELDS[mc].includes(sh.msub) ? sh.msub : (mc === c.cat && FIELDS[mc].includes(c.sub) ? c.sub : FIELDS[mc][0]);
+    const parent = state.cards[c.parentId];
+    move = `<div class="movebox"><b>移動到其他分支</b>
+      <div class="selrow">
+        <select id="mvcat" aria-label="大領域">${Object.keys(FIELDS).map(f => `<option${f === mc ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>
+        <select id="mvsub" aria-label="子領域">${FIELDS[mc].map(s => `<option${s === ms ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select>
+      </div>
+      ${parent || kids ? `<p class="hint">${parent ? `移動後會離開原本的上層卡片「${esc(parent.title)}」，成為子領域底下的獨立分支。` : ''}${kids ? `底下 ${kids} 張延伸卡片會一起移動。` : ''}</p>` : ''}
+      <div class="btnrow"><button class="btn sm" data-act="moveok">移到這裡</button><button class="btn sm sec" data-act="movecancel">取消</button></div></div>`;
+  }
+  el.innerHTML = `<div class="sheet-in">
+    <div class="sheet-h"><nav class="crumb" aria-label="所在分支">${crumbs.join('<span class="sep">›</span>')}</nav>
+    <button class="x" data-act="sheetclose">關閉</button></div>
+    <div class="sheet-tools">
+      <button class="btn sm" data-act="openpath" data-id="${c.id}">在探索頁開啟</button>
+      <button class="btn sm sec" data-act="movestart" aria-pressed="${!!sh.moving}">移動</button>
+      <button class="btn sm sec danger" data-act="delcard">刪除</button>
+    </div>
+    ${move}
+    ${renderCard(c, { sheet:true })}</div>`;
+  el.scrollTop = 0;
+  if (window.MathJax && MathJax.typesetPromise){
+    MathJax.typesetClear && MathJax.typesetClear([el]);
+    MathJax.typesetPromise([el]).catch(() => {});
+  }
 }
 
 function renderActions(){
@@ -1807,6 +1943,40 @@ document.addEventListener('click', e => {
       state.view = 'explore'; render(); window.scrollTo(0, 0);
       newPoint({ cat: el.dataset.cat, sub: el.dataset.sub || null }); break;
     case 'sheetsub': state.sheet = { type:'sub', cat:el.dataset.cat, sub:el.dataset.sub }; renderSheet(); break;
+    case 'sheetcat': state.sheet = { type:'cat', cat:el.dataset.cat }; renderSheet(); break;
+    case 'sheetcard': showCard(el.dataset.id); break;
+    case 'sheetterm': {
+      const sc = state.sheet && state.cards[state.sheet.id];
+      if (!sc) break;
+      if (!state.settings.key.trim()){ state.view = 'settings'; render(); toast('請先設定 API 金鑰'); break; }
+      state.path = lineage(sc.id); state.view = 'explore'; state.sheet = null;
+      persist(); render(); window.scrollTo(0, 0);
+      openTerm(el.dataset.term, el.dataset.en || sc.terms.find(t => t.term === el.dataset.term)?.english || ''); break;
+    }
+    case 'movestart':
+      if (state.sheet?.type !== 'card') break;
+      state.sheet.moving = !state.sheet.moving; state.sheet.mcat = state.sheet.msub = null; renderSheet(); break;
+    case 'movecancel': if (state.sheet) state.sheet.moving = false; renderSheet(); break;
+    case 'moveok': {
+      const id = state.sheet?.id, cat = $('#mvcat')?.value, sub = $('#mvsub')?.value;
+      const mc = state.cards[id];
+      if (!mc || !cat || !sub) break;
+      if (mc.cat === cat && mc.sub === sub && !mc.parentId){ toast('已經在這個分支了'); break; }
+      const n = moveBranch(id, cat, sub);
+      state.sheet = { type:'card', id };
+      render(); focusSel();
+      toast(`已移到「${cat}／${sub}」${n > 1 ? `，共 ${n} 張卡片` : ''}`); break;
+    }
+    case 'delcard': {
+      const dc = state.sheet && state.cards[state.sheet.id];
+      if (!dc) break;
+      const kids = descendants(dc.id).length;
+      if (!confirm(`確定要刪除「${dc.title}」${kids ? `以及底下 ${kids} 張延伸卡片` : ''}嗎？刪除後無法復原${state.drive.connected ? '，其他裝置同步後也會一併刪除' : ''}。`)) break;
+      const cat = catOf(dc);
+      state.sheet = FIELDS[cat] && dc.sub ? { type:'sub', cat, sub:dc.sub } : { type:'cat', cat };
+      const n = deleteBranch(dc.id);
+      render(); toast(`已刪除 ${n} 張卡片`); break;
+    }
     case 'sheetclose': state.sheet = null; renderSheet(); break;
     case 'mapreset': state.mapT = null; render(); break;
     case 'regen': regen(c); break;
@@ -1906,6 +2076,8 @@ document.addEventListener('change', e => {
   if (e.target.id === 'autofallback'){ state.settings.autoFallback = e.target.checked; saveSettings(); }
   if (e.target.id === 'driveauto'){ state.drive.auto = e.target.checked; saveDrive(); }
   if (e.target.id === 'askctxbox') state.ask.useCtx = e.target.checked;
+  if (e.target.id === 'mvcat' && state.sheet){ state.sheet.mcat = e.target.value; state.sheet.msub = null; renderSheet(); }
+  if (e.target.id === 'mvsub' && state.sheet) state.sheet.msub = e.target.value;
 });
 document.addEventListener('keydown', e => {
   if (!state.ask.open) return;
